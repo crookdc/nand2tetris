@@ -4,4 +4,3 @@ bins/assembler
 *.cpu
 *.heap
 hack
-asm

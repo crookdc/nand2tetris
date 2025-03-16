@@ -5,7 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/crookdc/nand2tetris/internal/chip"
-	"github.com/crookdc/nand2tetris/internal/simulator"
+	"github.com/crookdc/nand2tetris/simulator"
 	"log"
 	"os"
 	"runtime/pprof"

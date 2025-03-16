@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/crookdc/nand2tetris/internal/asm"
+	"github.com/crookdc/nand2tetris/asm"
 	"log"
 	"os"
 )
