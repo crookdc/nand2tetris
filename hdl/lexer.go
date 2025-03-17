@@ -16,6 +16,7 @@ var (
 		'}': rightCurlyBrace,
 		'[': leftBracket,
 		']': rightBracket,
+		'.': dot,
 	}
 	keywords = map[string]variant{
 		"chip": chip,
@@ -29,6 +30,7 @@ const (
 	chip
 	set
 	out
+	dot
 	identifier
 	integer
 	leftParenthesis
@@ -50,12 +52,12 @@ type token struct {
 	literal string
 }
 
-type lexer struct {
-	src    string
+type Lexer struct {
+	Source string
 	cursor int
 }
 
-func (l *lexer) peek() (token, error) {
+func (l *Lexer) peek() (token, error) {
 	prev := l.cursor
 	defer func() {
 		l.cursor = prev
@@ -63,14 +65,14 @@ func (l *lexer) peek() (token, error) {
 	return l.next()
 }
 
-func (l *lexer) next() (token, error) {
+func (l *Lexer) next() (token, error) {
 	l.literal(l.space)
-	if l.cursor >= len(l.src) {
+	if l.cursor >= len(l.Source) {
 		return token{
 			variant: eof,
 		}, nil
 	}
-	char := l.src[l.cursor]
+	char := l.Source[l.cursor]
 	if symbol, ok := symbols[char]; ok {
 		l.cursor++
 		return token{
@@ -80,7 +82,7 @@ func (l *lexer) next() (token, error) {
 	}
 	switch char {
 	case '/':
-		if l.src[l.cursor+1] == '/' {
+		if l.Source[l.cursor+1] == '/' {
 			if err := l.seek('\n'); err != nil {
 				return token{}, err
 			}
@@ -88,7 +90,7 @@ func (l *lexer) next() (token, error) {
 		}
 		return token{}, fmt.Errorf("invalid token '%s'", string(char))
 	case '-':
-		if l.src[l.cursor+1] == '>' {
+		if l.Source[l.cursor+1] == '>' {
 			l.cursor += 2
 			return token{
 				variant: arrow,
@@ -122,28 +124,28 @@ func (l *lexer) next() (token, error) {
 }
 
 // seek places the cursor at the next instance of the supplied character, skipping anything before finding a match
-func (l *lexer) seek(c uint8) error {
-	for ; l.cursor < len(l.src) && l.src[l.cursor] != c; l.cursor++ {
+func (l *Lexer) seek(c uint8) error {
+	for ; l.cursor < len(l.Source) && l.Source[l.cursor] != c; l.cursor++ {
 	}
-	if l.cursor == len(l.src) {
+	if l.cursor == len(l.Source) {
 		return fmt.Errorf("character '%s' not found", string(c))
 	}
 	return nil
 }
 
-func (l *lexer) space(c uint8) bool {
+func (l *Lexer) space(c uint8) bool {
 	return unicode.IsSpace(rune(c))
 }
 
-func (l *lexer) literal(fn func(uint8) bool) string {
+func (l *Lexer) literal(fn func(uint8) bool) string {
 	literal := ""
-	for ; l.cursor < len(l.src) && fn(l.src[l.cursor]); l.cursor++ {
-		literal += string(l.src[l.cursor])
+	for ; l.cursor < len(l.Source) && fn(l.Source[l.cursor]); l.cursor++ {
+		literal += string(l.Source[l.cursor])
 	}
 	return literal
 }
 
-func (l *lexer) identifier(c uint8) bool {
+func (l *Lexer) identifier(c uint8) bool {
 	if unicode.IsSpace(rune(c)) {
 		return false
 	}

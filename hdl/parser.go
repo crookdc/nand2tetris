@@ -14,43 +14,69 @@ type Expression interface {
 	Statement
 }
 
-type Parser struct {
-	lexer lexer
+func NewParser(lexer Lexer) Parser {
+	return Parser{
+		lexer: lexer,
+	}
 }
 
-func (p *Parser) Parse() (Chip, error) {
+type Parser struct {
+	lexer Lexer
+}
+
+func (p *Parser) Parse() ([]ChipDefinition, error) {
+	tok, err := p.lexer.peek()
+	if err != nil {
+		return nil, err
+	}
+	chips := make([]ChipDefinition, 0)
+	for tok.variant != eof {
+		ch, err := p.parse()
+		if err != nil {
+			return nil, err
+		}
+		chips = append(chips, ch)
+		tok, err = p.lexer.peek()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return chips, nil
+}
+
+func (p *Parser) parse() (ChipDefinition, error) {
 	if _, err := p.expect(chip); err != nil {
-		return Chip{}, err
+		return ChipDefinition{}, err
 	}
 	name, err := p.expect(identifier)
 	if err != nil {
-		return Chip{}, err
+		return ChipDefinition{}, err
 	}
 	inputs, err := p.parseInputDefinition()
 	if err != nil {
-		return Chip{}, err
+		return ChipDefinition{}, err
 	}
 	if _, err := p.expect(arrow); err != nil {
-		return Chip{}, err
+		return ChipDefinition{}, err
 	}
 	outputs, err := p.parseOutputDefinition()
 	if err != nil {
-		return Chip{}, err
+		return ChipDefinition{}, err
 	}
 	body, err := p.parseStatementBlock()
 	if err != nil {
-		return Chip{}, err
+		return ChipDefinition{}, err
 	}
-	return Chip{
-		name:    name.literal,
-		inputs:  inputs,
-		outputs: outputs,
-		body:    body,
+	return ChipDefinition{
+		Name:    name.literal,
+		Inputs:  inputs,
+		Outputs: outputs,
+		Body:    body,
 	}, nil
 }
 
-func (p *Parser) parseInputDefinition() (map[string]int, error) {
-	inputs := make(map[string]int)
+func (p *Parser) parseInputDefinition() (map[string]byte, error) {
+	inputs := make(map[string]byte)
 	err := p.parseList(func() error {
 		name, err := p.expect(identifier)
 		if err != nil {
@@ -67,7 +93,7 @@ func (p *Parser) parseInputDefinition() (map[string]int, error) {
 		if err != nil {
 			return err
 		}
-		inputs[name.literal] = parsedSize
+		inputs[name.literal] = byte(parsedSize)
 		return nil
 	})
 	if err != nil {
@@ -76,8 +102,8 @@ func (p *Parser) parseInputDefinition() (map[string]int, error) {
 	return inputs, nil
 }
 
-func (p *Parser) parseOutputDefinition() ([]int, error) {
-	outputs := make([]int, 0)
+func (p *Parser) parseOutputDefinition() ([]byte, error) {
+	outputs := make([]byte, 0)
 	err := p.parseList(func() error {
 		size, err := p.expect(integer)
 		if err != nil {
@@ -87,7 +113,7 @@ func (p *Parser) parseOutputDefinition() ([]int, error) {
 		if err != nil {
 			return err
 		}
-		outputs = append(outputs, parsedSize)
+		outputs = append(outputs, byte(parsedSize))
 		return nil
 	})
 	if err != nil {
@@ -194,15 +220,23 @@ func (p *Parser) parseExpression() (Expression, error) {
 			return nil, err
 		}
 		return IntegerExpression{
-			literal: parsed,
+			Integer: parsed,
 		}, nil
 	case identifier:
 		next, err := p.lexer.peek()
 		if err != nil {
 			return nil, err
 		}
-		if next.variant != leftParenthesis {
-			return IdentifierExpression{literal: tok.literal}, nil
+		if next.variant == dot {
+			idx, err := p.expect(integer)
+			if err != nil {
+				return nil, err
+			}
+			parsed, err := strconv.Atoi(idx.literal)
+			if err != nil {
+				return nil, err
+			}
+			return IndexedExpression{Index: parsed, Identifier: tok.literal}, nil
 		}
 		args := make(map[string]Expression)
 		err = p.parseList(func() error {
@@ -224,8 +258,8 @@ func (p *Parser) parseExpression() (Expression, error) {
 			return nil, err
 		}
 		return CallExpression{
-			name: tok.literal,
-			args: args,
+			Name: tok.literal,
+			Args: args,
 		}, nil
 	default:
 		return nil, fmt.Errorf("unexpected token '%s'", tok.literal)
@@ -243,29 +277,29 @@ func (p *Parser) expect(v variant) (token, error) {
 	return tok, nil
 }
 
-type Chip struct {
-	name    string
-	inputs  map[string]int
-	outputs []int
-	body    []Statement
+type ChipDefinition struct {
+	Name    string
+	Inputs  map[string]byte
+	Outputs []byte
+	Body    []Statement
 }
 
-func (c Chip) Literal() string {
-	inputs := make([]string, 0, len(c.inputs))
-	for name, length := range c.inputs {
+func (c ChipDefinition) Literal() string {
+	inputs := make([]string, 0, len(c.Inputs))
+	for name, length := range c.Inputs {
 		inputs = append(inputs, fmt.Sprintf("%s: %d", name, length))
 	}
-	outputs := make([]string, 0, len(c.outputs))
-	for _, output := range c.outputs {
+	outputs := make([]string, 0, len(c.Outputs))
+	for _, output := range c.Outputs {
 		outputs = append(outputs, fmt.Sprintf("%d", output))
 	}
-	body := make([]string, 0, len(c.body))
-	for _, stmt := range c.body {
+	body := make([]string, 0, len(c.Body))
+	for _, stmt := range c.Body {
 		body = append(body, stmt.Literal())
 	}
 	return fmt.Sprintf(
 		"chip %s (%s) -> (%s) { %s }",
-		c.name,
+		c.Name,
 		strings.Join(inputs, ", "),
 		strings.Join(outputs, ", "),
 		body,
@@ -290,30 +324,31 @@ func (o OutStatement) Literal() string {
 }
 
 type CallExpression struct {
-	name string
-	args map[string]Expression
+	Name string
+	Args map[string]Expression
 }
 
 func (c CallExpression) Literal() string {
-	args := make([]string, 0, len(c.args))
-	for name, expression := range c.args {
+	args := make([]string, 0, len(c.Args))
+	for name, expression := range c.Args {
 		args = append(args, fmt.Sprintf("%s: %s", name, expression.Literal()))
 	}
-	return fmt.Sprintf("%s(%s)", c.name, strings.Join(args, ","))
+	return fmt.Sprintf("%s(%s)", c.Name, strings.Join(args, ","))
 }
 
 type IntegerExpression struct {
-	literal int
+	Integer int
 }
 
 func (i IntegerExpression) Literal() string {
-	return fmt.Sprintf("%d", i.literal)
+	return fmt.Sprintf("%d", i.Integer)
 }
 
-type IdentifierExpression struct {
-	literal string
+type IndexedExpression struct {
+	Index      int
+	Identifier string
 }
 
-func (i IdentifierExpression) Literal() string {
-	return i.literal
+func (i IndexedExpression) Literal() string {
+	return i.Identifier
 }
