@@ -181,22 +181,6 @@ func (p *Parser) parseStatement() (Statement, error) {
 		return nil, err
 	}
 	switch tok.variant {
-	case set:
-		name, err := p.expect(identifier)
-		if err != nil {
-			return nil, err
-		}
-		if _, err := p.expect(equals); err != nil {
-			return nil, err
-		}
-		expression, err := p.parseExpression()
-		if err != nil {
-			return nil, err
-		}
-		return SetStatement{
-			identifier: name.literal,
-			expression: expression,
-		}, nil
 	case out:
 		expr, err := p.parseExpression()
 		if err != nil {
@@ -228,6 +212,7 @@ func (p *Parser) parseExpression() (Expression, error) {
 			return nil, err
 		}
 		if next.variant == dot {
+			_, _ = p.expect(dot)
 			idx, err := p.expect(integer)
 			if err != nil {
 				return nil, err
@@ -238,29 +223,32 @@ func (p *Parser) parseExpression() (Expression, error) {
 			}
 			return IndexedExpression{Index: parsed, Identifier: tok.literal}, nil
 		}
-		args := make(map[string]Expression)
-		err = p.parseList(func() error {
-			name, err := p.expect(identifier)
+		if next.variant == leftParenthesis {
+			args := make(map[string]Expression)
+			err = p.parseList(func() error {
+				name, err := p.expect(identifier)
+				if err != nil {
+					return err
+				}
+				if _, err := p.expect(colon); err != nil {
+					return err
+				}
+				expr, err := p.parseExpression()
+				if err != nil {
+					return err
+				}
+				args[name.literal] = expr
+				return nil
+			})
 			if err != nil {
-				return err
+				return nil, err
 			}
-			if _, err := p.expect(colon); err != nil {
-				return err
-			}
-			expr, err := p.parseExpression()
-			if err != nil {
-				return err
-			}
-			args[name.literal] = expr
-			return nil
-		})
-		if err != nil {
-			return nil, err
+			return CallExpression{
+				Name: tok.literal,
+				Args: args,
+			}, nil
 		}
-		return CallExpression{
-			Name: tok.literal,
-			Args: args,
-		}, nil
+		return IdentifierExpression{Identifier: tok.literal}, nil
 	default:
 		return nil, fmt.Errorf("unexpected token '%s'", tok.literal)
 	}
@@ -306,15 +294,6 @@ func (c ChipDefinition) Literal() string {
 	)
 }
 
-type SetStatement struct {
-	identifier string
-	expression Expression
-}
-
-func (s SetStatement) Literal() string {
-	return fmt.Sprintf("set %s = %s", s.identifier, s.expression.Literal())
-}
-
 type OutStatement struct {
 	expression Expression
 }
@@ -345,10 +324,18 @@ func (i IntegerExpression) Literal() string {
 }
 
 type IndexedExpression struct {
-	Index      int
 	Identifier string
+	Index      int
 }
 
 func (i IndexedExpression) Literal() string {
+	return i.Identifier
+}
+
+type IdentifierExpression struct {
+	Identifier string
+}
+
+func (i IdentifierExpression) Literal() string {
 	return i.Identifier
 }

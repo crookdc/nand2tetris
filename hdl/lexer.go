@@ -20,7 +20,6 @@ var (
 	}
 	keywords = map[string]variant{
 		"chip": chip,
-		"set":  set,
 		"out":  out,
 	}
 )
@@ -28,7 +27,6 @@ var (
 const (
 	eof variant = iota
 	chip
-	set
 	out
 	dot
 	identifier
@@ -153,7 +151,7 @@ func (l *Lexer) identifier(c uint8) bool {
 		return true
 	}
 	switch c {
-	case '_', '.':
+	case '_':
 		return true
 	default:
 		return false
