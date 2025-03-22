@@ -8,6 +8,7 @@ import (
 var (
 	ErrChipNotFound              = errors.New("chip not found")
 	ErrInvalidArgumentExpression = errors.New("invalid argument expression")
+	ErrInvalidArrayExpression    = errors.New("invalid array expression")
 )
 
 func NAND(breadboard *Breadboard) (input ID, output ID) {
@@ -97,6 +98,28 @@ func (c *Compiler) expression(chip *Chip, exp Expression) ([]ID, error) {
 			return nil, err
 		}
 		return []ID{id}, nil
+	case ArrayExpression:
+		array := c.breadboard.Allocate(len(e.Values), Noop)
+		for i := range e.Values {
+			head, err := c.expression(chip, e.Values[i])
+			if err != nil {
+				return nil, err
+			}
+			if len(head) != 1 {
+				return nil, ErrInvalidArrayExpression
+			}
+			c.breadboard.Connect(Wire{
+				Head: Pin{
+					ID:    head[0],
+					Index: 0,
+				},
+				Tail: Pin{
+					ID:    array,
+					Index: i,
+				},
+			})
+		}
+		return []ID{array}, nil
 	default:
 		return nil, fmt.Errorf("invalid expression '%s'", e.Literal())
 	}

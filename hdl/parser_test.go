@@ -123,6 +123,40 @@ func TestChipParser_ParseChip(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			src: `
+			chip not (in: 1) -> (1) {
+				out nand(in: [in.0, 1])
+			}`,
+			chip: ChipDefinition{
+				Name: "not",
+				Inputs: map[string]byte{
+					"in": 1,
+				},
+				Outputs: []byte{
+					1,
+				},
+				Body: []Statement{
+					OutStatement{
+						expression: CallExpression{
+							Name: "nand",
+							Args: map[string]Expression{
+								"in": ArrayExpression{
+									Values: []Expression{
+										IndexedExpression{
+											Identifier: "in",
+											Index:      0,
+										},
+										IntegerExpression{Integer: 1},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			err: nil,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.src, func(t *testing.T) {

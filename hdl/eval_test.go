@@ -51,29 +51,54 @@ func TestCompile(t *testing.T) {
 				},
 			},
 		},
+		"AND": {
+			Name: "AND",
+			Inputs: map[string]byte{
+				"input": 2,
+			},
+			Outputs: []byte{1},
+			Body: []Statement{
+				OutStatement{
+					expression: CallExpression{
+						Name: "NOT",
+						Args: map[string]Expression{
+							"a": CallExpression{
+								Name: "NAND",
+								Args: map[string]Expression{
+									"a": IndexedExpression{
+										Identifier: "input",
+										Index:      0,
+									},
+									"b": IndexedExpression{
+										Identifier: "input",
+										Index:      1,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	})
 	compiled, err := compiler.Compile(ChipDefinition{
-		Name: "AND",
+		Name: "TST",
 		Inputs: map[string]byte{
-			"input": 2,
+			"in": 1,
 		},
 		Outputs: []byte{1},
 		Body: []Statement{
 			OutStatement{
 				expression: CallExpression{
-					Name: "NOT",
+					Name: "AND",
 					Args: map[string]Expression{
-						"a": CallExpression{
-							Name: "NAND",
-							Args: map[string]Expression{
-								"a": IndexedExpression{
+						"input": ArrayExpression{
+							Values: []Expression{
+								IndexedExpression{
 									Identifier: "input",
 									Index:      0,
 								},
-								"b": IndexedExpression{
-									Identifier: "input",
-									Index:      1,
-								},
+								IntegerExpression{Integer: 1},
 							},
 						},
 					},
@@ -86,50 +111,18 @@ func TestCompile(t *testing.T) {
 	}
 
 	compiler.breadboard.Set(Pin{
-		ID:    compiled.Inputs["input"],
+		ID:    compiled.Inputs["in"],
 		Index: 0,
-	}, 1)
-	compiler.breadboard.Set(Pin{
-		ID:    compiled.Inputs["input"],
-		Index: 1,
 	}, 1)
 	if compiler.breadboard.Get(Pin{ID: compiled.Outputs[0], Index: 0}) != 1 {
-		t.Errorf("expected AND 1, 1 to equal 1")
+		t.Errorf("expected TST 1 to equal 1")
 	}
 
 	compiler.breadboard.Set(Pin{
-		ID:    compiled.Inputs["input"],
-		Index: 0,
-	}, 1)
-	compiler.breadboard.Set(Pin{
-		ID:    compiled.Inputs["input"],
-		Index: 1,
-	}, 0)
-	if compiler.breadboard.Get(Pin{ID: compiled.Outputs[0], Index: 0}) != 0 {
-		t.Errorf("expected AND 1, 0 to equal 0")
-	}
-
-	compiler.breadboard.Set(Pin{
-		ID:    compiled.Inputs["input"],
+		ID:    compiled.Inputs["in"],
 		Index: 0,
 	}, 0)
-	compiler.breadboard.Set(Pin{
-		ID:    compiled.Inputs["input"],
-		Index: 1,
-	}, 1)
 	if compiler.breadboard.Get(Pin{ID: compiled.Outputs[0], Index: 0}) != 0 {
-		t.Errorf("expected AND 0, 1 to equal 0")
-	}
-
-	compiler.breadboard.Set(Pin{
-		ID:    compiled.Inputs["input"],
-		Index: 0,
-	}, 0)
-	compiler.breadboard.Set(Pin{
-		ID:    compiled.Inputs["input"],
-		Index: 1,
-	}, 0)
-	if compiler.breadboard.Get(Pin{ID: compiled.Outputs[0], Index: 0}) != 0 {
-		t.Errorf("expected AND 0, 0 to equal 0")
+		t.Errorf("expected TST 0 to equal 0")
 	}
 }
