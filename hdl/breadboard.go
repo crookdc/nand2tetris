@@ -37,7 +37,6 @@ type ID = int
 
 func NewBreadboard() *Breadboard {
 	return &Breadboard{
-		freed:     make([]int, 0),
 		pins:      make([][]signal, 0),
 		wires:     make(map[Pin][]Pin),
 		callbacks: make(map[ID]Callback),
@@ -45,7 +44,6 @@ func NewBreadboard() *Breadboard {
 }
 
 type Breadboard struct {
-	freed     []int
 	pins      [][]signal
 	wires     map[Pin][]Pin
 	callbacks map[ID]Callback
@@ -64,32 +62,10 @@ func (b *Breadboard) SizeOf(id ID) (int, error) {
 // on any of the pins within the group. The returned ID is the ID to be used when retrieving or setting values within
 // the group. See [hdl.Breadboard.Set], [hdl.Breadboard.Get], [hdl.Breadboard.Get] and [hdl.Breadboard.GetGroup].
 func (b *Breadboard) Allocate(count int, cb Callback) ID {
-	var id ID
-	if len(b.freed) > 0 {
-		id = b.freed[len(b.freed)-1]
-		b.freed = b.freed[:len(b.freed)-1]
-		b.pins[id] = make([]signal, count)
-	} else {
-		id = len(b.pins)
-		b.pins = append(b.pins, make([]signal, count))
-	}
+	id := len(b.pins)
+	b.pins = append(b.pins, make([]signal, count))
 	b.callbacks[id] = cb
 	return id
-}
-
-// Free returns the provided to the pool of available IDs which can be selected for a subsequent
-// [hdl.Breadboard.Allocate]. It is up to the client to not further use the ID after returning it back to the pool.
-// Although other [hdl.Breadboard] methods do return an error is the client attempts to use a non-allocated ID.
-func (b *Breadboard) Free(id ID) {
-	for i := range b.pins[id] {
-		delete(b.wires, Pin{
-			ID:    id,
-			Index: i,
-		})
-	}
-	delete(b.callbacks, id)
-	b.pins[id] = nil
-	b.freed = append(b.freed, id)
 }
 
 // Connect causes one pin (the tail) to always follow the value of the other (the head). The connection is one-way such
@@ -222,11 +198,6 @@ func (b *Breadboard) validate(pin Pin) error {
 func (b *Breadboard) exists(id ID) bool {
 	if id < 0 || id > len(b.pins) {
 		return false
-	}
-	for _, free := range b.freed {
-		if free == id {
-			return false
-		}
 	}
 	return true
 }
