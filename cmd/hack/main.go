@@ -1,94 +1,59 @@
 package main
 
 import (
-	"bufio"
 	"flag"
-	"fmt"
-	"github.com/crookdc/nand2tetris/internal/chip"
-	"github.com/crookdc/nand2tetris/simulator"
+	"github.com/crookdc/nand2tetris/hdl"
+	"io/fs"
 	"log"
 	"os"
-	"runtime/pprof"
-	"strconv"
+	"path/filepath"
+	"strings"
 )
 
 var (
-	profile = flag.String("profile", "", "write profiling data to files with this base name")
-	program = flag.String("program", "", "file containing program to be written to rom")
+	hdlDir = flag.String("hdl-dir", "", "path to the directory containing HDL files")
 )
 
 func main() {
 	flag.Parse()
-	if *profile != "" {
-		f, err := os.Create(*profile + ".cpu")
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer f.Close()
-		if err := pprof.StartCPUProfile(f); err != nil {
-			log.Fatal(err)
-		}
-		defer pprof.StopCPUProfile()
+	if *hdlDir == "" {
+		log.Fatal("HDL directory must be provided")
 	}
-	if *program == "" {
-		log.Fatal("missing path to program")
-	}
-
-	rom, err := loadProgram(*program)
+	chips, err := loadHdlDefinitions(*hdlDir)
 	if err != nil {
 		log.Fatal(err)
 	}
-	sim, err := simulator.NewSDLSimulator(rom)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer sim.Close()
-	for sim.Running {
-		sim.Update()
-	}
-
-	if *profile != "" {
-		f, err := os.Create(*profile + ".heap")
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer f.Close()
-		if err := pprof.WriteHeapProfile(f); err != nil {
-			log.Fatal(err)
-		}
-	}
+	log.Println(chips)
 }
 
-func loadProgram(file string) (chip.ROM, error) {
-	f, err := os.OpenFile(file, os.O_RDONLY, 0666)
+func loadHdlDefinitions(dir string) (map[string]hdl.ChipDefinition, error) {
+	chips := make(map[string]hdl.ChipDefinition)
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if !strings.HasSuffix(path, ".hdl") {
+			return nil
+		}
+		f, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		parser := hdl.NewParser(hdl.Lexer{Source: string(f)})
+		chs, err := parser.Parse()
+		if err != nil {
+			return err
+		}
+		for _, chip := range chs {
+			chips[chip.Name] = chip
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
-	var rom chip.ROM
-	s := bufio.NewScanner(f)
-	for s.Scan() {
-		line := s.Text()
-		if len(line) != 16 {
-			return nil, fmt.Errorf("invalid line length '%s'", line)
-		}
-		instruction, err := parseInstruction(line)
-		if err != nil {
-			return nil, err
-		}
-		rom = append(rom, instruction)
-	}
-	return rom, nil
-}
-
-func parseInstruction(line string) ([16]chip.Signal, error) {
-	instruction := [16]chip.Signal{}
-	for i := range 16 {
-		bit, err := strconv.Atoi(string(line[i]))
-		if err != nil {
-			return [16]chip.Signal{}, err
-		}
-		instruction[i] = chip.Signal(bit)
-	}
-	return instruction, nil
+	return chips, nil
 }
