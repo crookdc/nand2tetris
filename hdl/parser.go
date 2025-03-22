@@ -212,46 +212,54 @@ func (p *Parser) parseExpression() (Expression, error) {
 			return nil, err
 		}
 		if next.variant == dot {
-			_, _ = p.expect(dot)
-			idx, err := p.expect(integer)
-			if err != nil {
-				return nil, err
-			}
-			parsed, err := strconv.Atoi(idx.literal)
-			if err != nil {
-				return nil, err
-			}
-			return IndexedExpression{Index: parsed, Identifier: tok.literal}, nil
+			return p.parseIndexedExpression(tok)
 		}
 		if next.variant == leftParenthesis {
-			args := make(map[string]Expression)
-			err = p.parseList(func() error {
-				name, err := p.expect(identifier)
-				if err != nil {
-					return err
-				}
-				if _, err := p.expect(colon); err != nil {
-					return err
-				}
-				expr, err := p.parseExpression()
-				if err != nil {
-					return err
-				}
-				args[name.literal] = expr
-				return nil
-			})
-			if err != nil {
-				return nil, err
-			}
-			return CallExpression{
-				Name: tok.literal,
-				Args: args,
-			}, nil
+			return p.parseCallExpression(tok)
 		}
 		return IdentifierExpression{Identifier: tok.literal}, nil
 	default:
 		return nil, fmt.Errorf("unexpected token '%s'", tok.literal)
 	}
+}
+
+func (p *Parser) parseIndexedExpression(ident token) (IndexedExpression, error) {
+	_, _ = p.expect(dot)
+	idx, err := p.expect(integer)
+	if err != nil {
+		return IndexedExpression{}, err
+	}
+	parsed, err := strconv.Atoi(idx.literal)
+	if err != nil {
+		return IndexedExpression{}, err
+	}
+	return IndexedExpression{Index: parsed, Identifier: ident.literal}, nil
+}
+
+func (p *Parser) parseCallExpression(ident token) (CallExpression, error) {
+	args := make(map[string]Expression)
+	err := p.parseList(func() error {
+		name, err := p.expect(identifier)
+		if err != nil {
+			return err
+		}
+		if _, err := p.expect(colon); err != nil {
+			return err
+		}
+		expr, err := p.parseExpression()
+		if err != nil {
+			return err
+		}
+		args[name.literal] = expr
+		return nil
+	})
+	if err != nil {
+		return CallExpression{}, err
+	}
+	return CallExpression{
+		Name: ident.literal,
+		Args: args,
+	}, nil
 }
 
 func (p *Parser) expect(v variant) (token, error) {

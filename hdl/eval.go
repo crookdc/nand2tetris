@@ -104,12 +104,12 @@ func (c *Compiler) expression(chip *Chip, exp Expression) ([]ID, error) {
 
 func (c *Compiler) evaluateCallExpression(chip *Chip, e CallExpression) ([]ID, error) {
 	if e.Name == "NAND" {
-		return c.evaluateNandChip(chip, e)
+		return c.evaluateNandChipInvocation(chip, e)
 	}
-	return c.evaluateSupportChip(chip, e)
+	return c.evaluateSupportChipInvocation(chip, e)
 }
 
-func (c *Compiler) evaluateNandChip(chip *Chip, e CallExpression) ([]ID, error) {
+func (c *Compiler) evaluateNandChipInvocation(chip *Chip, e CallExpression) ([]ID, error) {
 	input, output := NAND(c.breadboard)
 	a, err := c.expression(chip, e.Args["a"])
 	if err != nil {
@@ -142,7 +142,7 @@ func (c *Compiler) evaluateNandChip(chip *Chip, e CallExpression) ([]ID, error) 
 	return []ID{output}, nil
 }
 
-func (c *Compiler) evaluateSupportChip(chip *Chip, e CallExpression) ([]ID, error) {
+func (c *Compiler) evaluateSupportChipInvocation(chip *Chip, e CallExpression) ([]ID, error) {
 	definition, ok := c.support[e.Name]
 	if !ok {
 		return nil, ErrChipNotFound
