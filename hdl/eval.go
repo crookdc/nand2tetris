@@ -99,27 +99,11 @@ func (c *Compiler) expression(chip *Chip, exp Expression) ([]ID, error) {
 		}
 		return []ID{id}, nil
 	case ArrayExpression:
-		array := c.breadboard.Allocate(len(e.Values), Noop)
-		for i := range e.Values {
-			head, err := c.expression(chip, e.Values[i])
-			if err != nil {
-				return nil, err
-			}
-			if len(head) != 1 {
-				return nil, ErrInvalidArrayExpression
-			}
-			c.breadboard.Connect(Wire{
-				Head: Pin{
-					ID:    head[0],
-					Index: 0,
-				},
-				Tail: Pin{
-					ID:    array,
-					Index: i,
-				},
-			})
+		id, err := c.evaluateArrayExpression(chip, e)
+		if err != nil {
+			return nil, err
 		}
-		return []ID{array}, nil
+		return []ID{id}, nil
 	default:
 		return nil, fmt.Errorf("invalid expression '%s'", e.Literal())
 	}
@@ -216,4 +200,28 @@ func (c *Compiler) evaluateIdentifierExpression(chip *Chip, e IdentifierExpressi
 		return 0, err
 	}
 	return tail, nil
+}
+
+func (c *Compiler) evaluateArrayExpression(chip *Chip, e ArrayExpression) (ID, error) {
+	array := c.breadboard.Allocate(len(e.Values), Noop)
+	for i := range e.Values {
+		head, err := c.expression(chip, e.Values[i])
+		if err != nil {
+			return 0, err
+		}
+		if len(head) != 1 {
+			return 0, ErrInvalidArrayExpression
+		}
+		c.breadboard.Connect(Wire{
+			Head: Pin{
+				ID:    head[0],
+				Index: 0,
+			},
+			Tail: Pin{
+				ID:    array,
+				Index: i,
+			},
+		})
+	}
+	return array, nil
 }
