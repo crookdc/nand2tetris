@@ -1,6 +1,14 @@
 package hdl
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+var (
+	ErrChipNotFound              = errors.New("chip not found")
+	ErrInvalidArgumentExpression = errors.New("invalid argument expression")
+)
 
 func NAND(breadboard *Breadboard) (input ID, output ID) {
 	output = breadboard.Allocate(1, Noop)
@@ -54,12 +62,14 @@ func (c *Compiler) Compile(main ChipDefinition) (Chip, error) {
 	for _, statement := range main.Body {
 		switch s := statement.(type) {
 		case OutStatement:
-			id, err := c.expression(&compiled, s.expression)
+			ids, err := c.expression(&compiled, s.expression)
 			if err != nil {
 				return Chip{}, err
 			}
-			compiled.Outputs[counter] = id
-			counter++
+			for _, id := range ids {
+				compiled.Outputs[counter] = id
+				counter++
+			}
 		default:
 			panic("not implemented")
 		}
@@ -67,63 +77,120 @@ func (c *Compiler) Compile(main ChipDefinition) (Chip, error) {
 	return compiled, nil
 }
 
-func (c *Compiler) expression(chip *Chip, exp Expression) (ID, error) {
+func (c *Compiler) expression(chip *Chip, exp Expression) ([]ID, error) {
 	switch e := exp.(type) {
 	case CallExpression:
-		if e.Name == "NAND" {
-			input, output := NAND(c.breadboard)
-			a, err := c.expression(chip, e.Args["a"])
-			if err != nil {
-				return -1, err
-			}
-			b, err := c.expression(chip, e.Args["b"])
-			if err != nil {
-				return -1, err
-			}
-			c.breadboard.Connect(Wire{
-				Head: Pin{
-					ID:    a,
-					Index: 0,
-				},
-				Tail: Pin{
-					ID:    input,
-					Index: 0,
-				},
-			})
-			c.breadboard.Connect(Wire{
-				Head: Pin{
-					ID:    b,
-					Index: 0,
-				},
-				Tail: Pin{
-					ID:    input,
-					Index: 1,
-				},
-			})
-			return output, nil
-		}
-		panic("not implemented")
+		return c.evaluateCallExpression(chip, e)
 	case IntegerExpression:
 		id := c.breadboard.Allocate(1, Noop)
 		c.breadboard.Set(Pin{ID: id, Index: 0}, byte(e.Integer))
-		return id, nil
+		return []ID{id}, nil
 	case IndexedExpression:
-		// Initially an identifier must be an input parameter, it cannot be a parameter which has been defined using the
-		// `set` keyword.
-		head := chip.Inputs[e.Identifier]
-		tail := c.breadboard.Allocate(1, Noop)
-		c.breadboard.Connect(Wire{
-			Head: Pin{
-				ID:    head,
-				Index: e.Index,
-			},
-			Tail: Pin{
-				ID:    tail,
-				Index: 0,
-			},
-		})
-		return tail, nil
+		id, err := c.evaluateIndexedExpression(chip, e)
+		if err != nil {
+			return nil, err
+		}
+		return []ID{id}, nil
+	case IdentifierExpression:
+		id, err := c.evaluateIdentifierExpression(chip, e)
+		if err != nil {
+			return nil, err
+		}
+		return []ID{id}, nil
 	default:
-		return -1, fmt.Errorf("invalid expression '%s'", e.Literal())
+		return nil, fmt.Errorf("invalid expression '%s'", e.Literal())
 	}
+}
+
+func (c *Compiler) evaluateCallExpression(chip *Chip, e CallExpression) ([]ID, error) {
+	if e.Name == "NAND" {
+		return c.evaluateNandChip(chip, e)
+	}
+	return c.evaluateSupportChip(chip, e)
+}
+
+func (c *Compiler) evaluateNandChip(chip *Chip, e CallExpression) ([]ID, error) {
+	input, output := NAND(c.breadboard)
+	a, err := c.expression(chip, e.Args["a"])
+	if err != nil {
+		return nil, err
+	}
+	b, err := c.expression(chip, e.Args["b"])
+	if err != nil {
+		return nil, err
+	}
+	c.breadboard.Connect(Wire{
+		Head: Pin{
+			ID:    a[0],
+			Index: 0,
+		},
+		Tail: Pin{
+			ID:    input,
+			Index: 0,
+		},
+	})
+	c.breadboard.Connect(Wire{
+		Head: Pin{
+			ID:    b[0],
+			Index: 0,
+		},
+		Tail: Pin{
+			ID:    input,
+			Index: 1,
+		},
+	})
+	return []ID{output}, nil
+}
+
+func (c *Compiler) evaluateSupportChip(chip *Chip, e CallExpression) ([]ID, error) {
+	definition, ok := c.support[e.Name]
+	if !ok {
+		return nil, ErrChipNotFound
+	}
+	ch, err := c.Compile(definition)
+	if err != nil {
+		return nil, err
+	}
+	for arg, valExpr := range e.Args {
+		val, err := c.expression(chip, valExpr)
+		if err != nil {
+			return nil, err
+		}
+		if len(val) != 1 {
+			return nil, ErrInvalidArgumentExpression
+		}
+		if err := c.breadboard.ConnectGroup(val[0], ch.Inputs[arg]); err != nil {
+			return nil, err
+		}
+	}
+	return ch.Outputs, nil
+}
+
+func (c *Compiler) evaluateIndexedExpression(chip *Chip, e IndexedExpression) (ID, error) {
+	head := chip.Inputs[e.Identifier]
+	tail := c.breadboard.Allocate(1, Noop)
+	c.breadboard.Connect(Wire{
+		Head: Pin{
+			ID:    head,
+			Index: e.Index,
+		},
+		Tail: Pin{
+			ID:    tail,
+			Index: 0,
+		},
+	})
+	return tail, nil
+}
+
+func (c *Compiler) evaluateIdentifierExpression(chip *Chip, e IdentifierExpression) (ID, error) {
+	head := chip.Inputs[e.Identifier]
+	size, err := c.breadboard.SizeOf(head)
+	if err != nil {
+		return 0, err
+	}
+	tail := c.breadboard.Allocate(size, Noop)
+	if err := c.breadboard.ConnectGroup(head, tail); err != nil {
+		return 0, err
+	}
+	return tail, nil
 }

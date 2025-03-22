@@ -51,6 +51,15 @@ type Breadboard struct {
 	callbacks map[ID]Callback
 }
 
+// SizeOf returns the length of the group registered under the provided ID. An error is returned if the ID is not
+// registered on the breadboard or is otherwise invalid.
+func (b *Breadboard) SizeOf(id ID) (int, error) {
+	if !b.exists(id) {
+		return 0, ErrInvalidID
+	}
+	return len(b.pins[id]), nil
+}
+
 // Allocate allocates a new pin group of the provided size together with a callback to be called when a new value is set
 // on any of the pins within the group. The returned ID is the ID to be used when retrieving or setting values within
 // the group. See [hdl.Breadboard.Set], [hdl.Breadboard.Get], [hdl.Breadboard.Get] and [hdl.Breadboard.GetGroup].
@@ -207,7 +216,7 @@ func (b *Breadboard) validate(pin Pin) error {
 }
 
 func (b *Breadboard) exists(id ID) bool {
-	if id > len(b.pins) {
+	if id < 0 || id > len(b.pins) {
 		return false
 	}
 	for _, free := range b.freed {
