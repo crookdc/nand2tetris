@@ -110,7 +110,7 @@ func (c *Compiler) expression(chip *Chip, exp Expression) ([]ID, error) {
 }
 
 func (c *Compiler) evaluateCallExpression(chip *Chip, e CallExpression) ([]ID, error) {
-	if e.Name == "NAND" {
+	if e.Name == "nand" {
 		return c.evaluateNandChipInvocation(chip, e)
 	}
 	return c.evaluateSupportChipInvocation(chip, e)
@@ -118,34 +118,16 @@ func (c *Compiler) evaluateCallExpression(chip *Chip, e CallExpression) ([]ID, e
 
 func (c *Compiler) evaluateNandChipInvocation(chip *Chip, e CallExpression) ([]ID, error) {
 	input, output := NAND(c.breadboard)
-	a, err := c.expression(chip, e.Args["a"])
+	in, err := c.expression(chip, e.Args["in"])
 	if err != nil {
 		return nil, err
 	}
-	b, err := c.expression(chip, e.Args["b"])
-	if err != nil {
+	if len(in) != 1 {
+		return nil, ErrInvalidArgumentExpression
+	}
+	if err := c.breadboard.ConnectGroup(in[0], input); err != nil {
 		return nil, err
 	}
-	c.breadboard.Connect(Wire{
-		Head: Pin{
-			ID:    a[0],
-			Index: 0,
-		},
-		Tail: Pin{
-			ID:    input,
-			Index: 0,
-		},
-	})
-	c.breadboard.Connect(Wire{
-		Head: Pin{
-			ID:    b[0],
-			Index: 0,
-		},
-		Tail: Pin{
-			ID:    input,
-			Index: 1,
-		},
-	})
 	return []ID{output}, nil
 }
 
@@ -191,15 +173,7 @@ func (c *Compiler) evaluateIndexedExpression(chip *Chip, e IndexedExpression) (I
 
 func (c *Compiler) evaluateIdentifierExpression(chip *Chip, e IdentifierExpression) (ID, error) {
 	head := chip.Inputs[e.Identifier]
-	size, err := c.breadboard.SizeOf(head)
-	if err != nil {
-		return 0, err
-	}
-	tail := c.breadboard.Allocate(size, Noop)
-	if err := c.breadboard.ConnectGroup(head, tail); err != nil {
-		return 0, err
-	}
-	return tail, nil
+	return head, nil
 }
 
 func (c *Compiler) evaluateArrayExpression(chip *Chip, e ArrayExpression) (ID, error) {

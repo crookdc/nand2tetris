@@ -39,7 +39,7 @@ func NewBreadboard() *Breadboard {
 	return &Breadboard{
 		freed:     make([]int, 0),
 		pins:      make([][]signal, 0),
-		wires:     make(map[Pin]Pin),
+		wires:     make(map[Pin][]Pin),
 		callbacks: make(map[ID]Callback),
 	}
 }
@@ -47,7 +47,7 @@ func NewBreadboard() *Breadboard {
 type Breadboard struct {
 	freed     []int
 	pins      [][]signal
-	wires     map[Pin]Pin
+	wires     map[Pin][]Pin
 	callbacks map[ID]Callback
 }
 
@@ -106,7 +106,7 @@ func (b *Breadboard) Connect(wire Wire) {
 }
 
 func (b *Breadboard) connect(wire Wire) {
-	b.wires[wire.Head] = wire.Tail
+	b.wires[wire.Head] = append(b.wires[wire.Head], wire.Tail)
 	b.set(wire.Head, b.Get(wire.Head))
 }
 
@@ -182,7 +182,11 @@ func (b *Breadboard) set(pin Pin, value byte) {
 	b.pins[pin.ID][pin.Index].set(value)
 	pins, _ := b.GetGroup(pin.ID)
 	b.callbacks[pin.ID](pin.ID, pins)
-	if child, ok := b.wires[pin]; ok {
+	children, ok := b.wires[pin]
+	if !ok {
+		return
+	}
+	for _, child := range children {
 		b.set(child, value)
 	}
 }

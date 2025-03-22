@@ -1,0 +1,6 @@
+chip mux_2 (s: 1, a: 16, b: 16) -> (16) {
+    out or_16(
+        a: and_16_to_1(a: a, b: not(in: s)),
+        b: and_16_to_1(a: s, b: b)
+    )
+}

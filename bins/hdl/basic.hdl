@@ -1,7 +1,0 @@
-chip not (a: 1) -> (1) {
-    out nand(a: a, b: 1)
-}
-
-chip and (a: 1, b: 1) -> (1) {
-    out not(a: nand(a: a, b: b))
-}
