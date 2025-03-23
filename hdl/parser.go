@@ -189,7 +189,7 @@ func (p *Parser) parseStatement() (Statement, error) {
 		if err != nil {
 			return nil, err
 		}
-		return OutStatement{expression: expr}, nil
+		return OutStatement{Expression: expr}, nil
 	default:
 		return nil, fmt.Errorf("unexpected token '%s'", tok.literal)
 	}
@@ -323,11 +323,11 @@ func (c ChipDefinition) Literal() string {
 }
 
 type OutStatement struct {
-	expression Expression
+	Expression Expression
 }
 
 func (o OutStatement) Literal() string {
-	return fmt.Sprintf("out %s", o.expression.Literal())
+	return fmt.Sprintf("out %s", o.Expression.Literal())
 }
 
 type CallExpression struct {

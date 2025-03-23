@@ -7,8 +7,8 @@ import (
 
 var (
 	ErrChipNotFound              = errors.New("chip not found")
-	ErrInvalidArgumentExpression = errors.New("invalid argument expression")
-	ErrInvalidArrayExpression    = errors.New("invalid array expression")
+	ErrInvalidArgumentExpression = errors.New("invalid argument Expression")
+	ErrInvalidArrayExpression    = errors.New("invalid array Expression")
 )
 
 func NAND(breadboard *Breadboard) (input ID, output ID) {
@@ -36,13 +36,13 @@ type Chip struct {
 
 func NewCompiler(support map[string]ChipDefinition) *Compiler {
 	return &Compiler{
-		breadboard: NewBreadboard(),
+		Breadboard: NewBreadboard(),
 		support:    support,
 	}
 }
 
 type Compiler struct {
-	breadboard *Breadboard
+	Breadboard *Breadboard
 	support    map[string]ChipDefinition
 }
 
@@ -52,18 +52,18 @@ func (c *Compiler) Compile(main ChipDefinition) (Chip, error) {
 		Outputs: make([]ID, len(main.Outputs)),
 	}
 	for param, size := range main.Inputs {
-		id := c.breadboard.Allocate(int(size), Noop)
+		id := c.Breadboard.Allocate(int(size), Noop)
 		compiled.Inputs[param] = id
 	}
 	for i, size := range main.Outputs {
-		id := c.breadboard.Allocate(int(size), Noop)
+		id := c.Breadboard.Allocate(int(size), Noop)
 		compiled.Outputs[i] = id
 	}
 	var counter int
 	for _, statement := range main.Body {
 		switch s := statement.(type) {
 		case OutStatement:
-			ids, err := c.expression(&compiled, s.expression)
+			ids, err := c.expression(&compiled, s.Expression)
 			if err != nil {
 				return Chip{}, err
 			}
@@ -83,8 +83,8 @@ func (c *Compiler) expression(chip *Chip, exp Expression) ([]ID, error) {
 	case CallExpression:
 		return c.evaluateCallExpression(chip, e)
 	case IntegerExpression:
-		id := c.breadboard.Allocate(1, Noop)
-		c.breadboard.Set(Pin{ID: id, Index: 0}, byte(e.Integer))
+		id := c.Breadboard.Allocate(1, Noop)
+		c.Breadboard.Set(Pin{ID: id, Index: 0}, byte(e.Integer))
 		return []ID{id}, nil
 	case IndexedExpression:
 		id, err := c.evaluateIndexedExpression(chip, e)
@@ -105,7 +105,7 @@ func (c *Compiler) expression(chip *Chip, exp Expression) ([]ID, error) {
 		}
 		return []ID{id}, nil
 	default:
-		return nil, fmt.Errorf("invalid expression '%s'", e.Literal())
+		return nil, fmt.Errorf("invalid Expression '%s'", e.Literal())
 	}
 }
 
@@ -117,7 +117,7 @@ func (c *Compiler) evaluateCallExpression(chip *Chip, e CallExpression) ([]ID, e
 }
 
 func (c *Compiler) evaluateNandChipInvocation(chip *Chip, e CallExpression) ([]ID, error) {
-	input, output := NAND(c.breadboard)
+	input, output := NAND(c.Breadboard)
 	in, err := c.expression(chip, e.Args["in"])
 	if err != nil {
 		return nil, err
@@ -125,7 +125,7 @@ func (c *Compiler) evaluateNandChipInvocation(chip *Chip, e CallExpression) ([]I
 	if len(in) != 1 {
 		return nil, ErrInvalidArgumentExpression
 	}
-	if err := c.breadboard.ConnectGroup(in[0], input); err != nil {
+	if err := c.Breadboard.ConnectGroup(in[0], input); err != nil {
 		return nil, err
 	}
 	return []ID{output}, nil
@@ -148,7 +148,7 @@ func (c *Compiler) evaluateSupportChipInvocation(chip *Chip, e CallExpression) (
 		if len(val) != 1 {
 			return nil, ErrInvalidArgumentExpression
 		}
-		if err := c.breadboard.ConnectGroup(val[0], ch.Inputs[arg]); err != nil {
+		if err := c.Breadboard.ConnectGroup(val[0], ch.Inputs[arg]); err != nil {
 			return nil, err
 		}
 	}
@@ -157,8 +157,8 @@ func (c *Compiler) evaluateSupportChipInvocation(chip *Chip, e CallExpression) (
 
 func (c *Compiler) evaluateIndexedExpression(chip *Chip, e IndexedExpression) (ID, error) {
 	head := chip.Inputs[e.Identifier]
-	tail := c.breadboard.Allocate(1, Noop)
-	c.breadboard.Connect(Wire{
+	tail := c.Breadboard.Allocate(1, Noop)
+	c.Breadboard.Connect(Wire{
 		Head: Pin{
 			ID:    head,
 			Index: e.Index,
@@ -177,7 +177,7 @@ func (c *Compiler) evaluateIdentifierExpression(chip *Chip, e IdentifierExpressi
 }
 
 func (c *Compiler) evaluateArrayExpression(chip *Chip, e ArrayExpression) (ID, error) {
-	array := c.breadboard.Allocate(len(e.Values), Noop)
+	array := c.Breadboard.Allocate(len(e.Values), Noop)
 	for i := range e.Values {
 		head, err := c.expression(chip, e.Values[i])
 		if err != nil {
@@ -186,7 +186,7 @@ func (c *Compiler) evaluateArrayExpression(chip *Chip, e ArrayExpression) (ID, e
 		if len(head) != 1 {
 			return 0, ErrInvalidArrayExpression
 		}
-		c.breadboard.Connect(Wire{
+		c.Breadboard.Connect(Wire{
 			Head: Pin{
 				ID:    head[0],
 				Index: 0,

@@ -1,6 +1,14 @@
 chip mux_2 (s: 1, a: 16, b: 16) -> (16) {
     out or_16(
         a: and_16_to_1(a: a, b: not(in: s)),
-        b: and_16_to_1(a: s, b: b)
+        b: and_16_to_1(a: b, b: s)
+    )
+}
+
+chip mux_4 (s: 2, a: 16, b: 16, c: 16, d: 16) -> (16) {
+    out mux_2(
+        s: s.0,
+        a: mux_2(s: s.1, a: a, b: b),
+        b: mux_2(s: s.1, a: c, b: d)
     )
 }

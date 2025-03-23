@@ -76,10 +76,10 @@ func TestChipParser_ParseChip(t *testing.T) {
 				},
 				Body: []Statement{
 					OutStatement{
-						expression: IdentifierExpression{Identifier: "n"},
+						Expression: IdentifierExpression{Identifier: "n"},
 					},
 					OutStatement{
-						expression: IntegerExpression{Integer: 1},
+						Expression: IntegerExpression{Integer: 1},
 					},
 				},
 			},
@@ -101,7 +101,7 @@ func TestChipParser_ParseChip(t *testing.T) {
 				},
 				Body: []Statement{
 					OutStatement{
-						expression: CallExpression{
+						Expression: CallExpression{
 							Name: "nand",
 							Args: map[string]Expression{
 								"a": CallExpression{
@@ -138,7 +138,7 @@ func TestChipParser_ParseChip(t *testing.T) {
 				},
 				Body: []Statement{
 					OutStatement{
-						expression: CallExpression{
+						Expression: CallExpression{
 							Name: "nand",
 							Args: map[string]Expression{
 								"in": ArrayExpression{

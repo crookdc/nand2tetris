@@ -50,7 +50,7 @@ type Breadboard struct {
 }
 
 // SizeOf returns the length of the group registered under the provided ID. An error is returned if the ID is not
-// registered on the breadboard or is otherwise invalid.
+// registered on the Breadboard or is otherwise invalid.
 func (b *Breadboard) SizeOf(id ID) (int, error) {
 	if !b.exists(id) {
 		return 0, ErrInvalidID
