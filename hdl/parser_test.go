@@ -157,6 +157,68 @@ func TestChipParser_ParseChip(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			src: `
+			chip flerp (in: 16) -> (16) {
+				set a, b, c, d = dmux_4(s: [0, 0], in: in)
+				out a
+			}`,
+			chip: ChipDefinition{
+				Name: "flerp",
+				Inputs: map[string]byte{
+					"in": 16,
+				},
+				Outputs: []byte{
+					16,
+				},
+				Body: []Statement{
+					SetStatement{
+						Identifiers: []string{"a", "b", "c", "d"},
+						Expression: CallExpression{
+							Name: "dmux_4",
+							Args: map[string]Expression{
+								"s": ArrayExpression{
+									Values: []Expression{
+										IntegerExpression{Integer: 0},
+										IntegerExpression{Integer: 0},
+									},
+								},
+								"in": IdentifierExpression{Identifier: "in"},
+							},
+						},
+					},
+					OutStatement{Expression: IdentifierExpression{Identifier: "a"}},
+				},
+			},
+			err: nil,
+		},
+		{
+			src: `
+			chip test (in: 1) -> (1, 1) {
+				set regular = in
+				out regular
+			}`,
+			chip: ChipDefinition{
+				Name: "test",
+				Inputs: map[string]byte{
+					"in": 1,
+				},
+				Outputs: []byte{
+					1,
+					1,
+				},
+				Body: []Statement{
+					SetStatement{
+						Identifiers: []string{"regular"},
+						Expression: IdentifierExpression{
+							Identifier: "in",
+						},
+					},
+					OutStatement{Expression: IdentifierExpression{Identifier: "regular"}},
+				},
+			},
+			err: nil,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.src, func(t *testing.T) {

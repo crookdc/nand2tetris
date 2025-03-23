@@ -20,6 +20,7 @@ var (
 	}
 	keywords = map[string]variant{
 		"chip": chip,
+		"set":  set,
 		"out":  out,
 	}
 )
@@ -28,6 +29,7 @@ const (
 	eof variant = iota
 	chip
 	out
+	set
 	dot
 	identifier
 	integer

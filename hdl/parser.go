@@ -190,6 +190,27 @@ func (p *Parser) parseStatement() (Statement, error) {
 			return nil, err
 		}
 		return OutStatement{Expression: expr}, nil
+	case set:
+		identifiers := make([]string, 0)
+		err := p.parseList(func() error {
+			i, err := p.expect(identifier)
+			if err != nil {
+				return err
+			}
+			identifiers = append(identifiers, i.literal)
+			return nil
+		}, equals)
+		if err != nil {
+			return nil, err
+		}
+		expr, err := p.parseExpression()
+		if err != nil {
+			return nil, err
+		}
+		return SetStatement{
+			Identifiers: identifiers,
+			Expression:  expr,
+		}, nil
 	default:
 		return nil, fmt.Errorf("unexpected token '%s'", tok.literal)
 	}
@@ -328,6 +349,15 @@ type OutStatement struct {
 
 func (o OutStatement) Literal() string {
 	return fmt.Sprintf("out %s", o.Expression.Literal())
+}
+
+type SetStatement struct {
+	Identifiers []string
+	Expression  Expression
+}
+
+func (s SetStatement) Literal() string {
+	return fmt.Sprintf("set %s = %s", strings.Join(s.Identifiers, ", "), s.Expression.Literal())
 }
 
 type CallExpression struct {
