@@ -12,3 +12,11 @@ chip mux_4 (s: 2, a: 16, b: 16, c: 16, d: 16) -> (16) {
         b: mux_2(s: s.1, a: c, b: d)
     )
 }
+
+chip mux_8 (s: 3, a: 16, b: 16, c: 16, d: 16, e: 16, f: 16, g: 16, h: 16) -> (16) {
+    out mux_2(
+        s: s.0,
+        a: mux_4(s: [s.1, s.2], a: a, b: b, c: c, d: d),
+        b: mux_4(s: [s.1, s.2], a: e, b: f, c: g, d: h)
+    )
+}
