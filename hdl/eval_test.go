@@ -30,8 +30,8 @@ func TestNAND(t *testing.T) {
 	}
 }
 
-func TestCompile(t *testing.T) {
-	compiler := NewCompiler(map[string]ChipDefinition{
+func TestEvaluator_Evaluate(t *testing.T) {
+	compiler := NewEvaluator(map[string]ChipDefinition{
 		"NOT": {
 			Name: "NOT",
 			Inputs: map[string]byte{
@@ -91,7 +91,7 @@ func TestCompile(t *testing.T) {
 			},
 		},
 	})
-	compiled, err := compiler.Compile(ChipDefinition{
+	compiled, err := compiler.Evaluate(ChipDefinition{
 		Name: "TST",
 		Inputs: map[string]byte{
 			"in": 1,

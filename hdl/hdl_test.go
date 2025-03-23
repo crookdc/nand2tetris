@@ -11,6 +11,10 @@ import (
 )
 
 func TestHDL(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping HDL tests in short mode")
+	}
+	
 	definitions := make(map[string]hdl.ChipDefinition)
 	err := filepath.WalkDir("../bins/hdl", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -258,8 +262,8 @@ func TestHDL(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		compiler := hdl.NewCompiler(definitions)
-		chip, err := compiler.Compile(definitions[test.chip])
+		compiler := hdl.NewEvaluator(definitions)
+		chip, err := compiler.Evaluate(definitions[test.chip])
 		if err != nil {
 			t.Fatal(err)
 		}
