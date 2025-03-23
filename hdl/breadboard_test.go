@@ -4,8 +4,8 @@ import "testing"
 
 func TestBreadboard_Connect(t *testing.T) {
 	breadboard := NewBreadboard()
-	i := breadboard.Allocate(1, Noop)
-	j := breadboard.Allocate(1, Noop)
+	i := breadboard.Allocate(1, nil)
+	j := breadboard.Allocate(1, nil)
 	breadboard.Connect(
 		Wire{
 			Head: Pin{
@@ -22,7 +22,7 @@ func TestBreadboard_Connect(t *testing.T) {
 	if breadboard.Get(Pin{ID: j, Index: 0}) != 1 {
 		t.Errorf("expected 1 but got %d", breadboard.Get(Pin{ID: j, Index: 0}))
 	}
-	k := breadboard.Allocate(2, Noop)
+	k := breadboard.Allocate(2, nil)
 	breadboard.Connect(Wire{
 		Head: Pin{
 			ID:    j,
@@ -65,8 +65,8 @@ func TestBreadboard_Connect(t *testing.T) {
 
 func TestBreadboard_ConnectGroup(t *testing.T) {
 	breadboard := NewBreadboard()
-	i := breadboard.Allocate(8, Noop)
-	j := breadboard.Allocate(8, Noop)
+	i := breadboard.Allocate(8, nil)
+	j := breadboard.Allocate(8, nil)
 	if err := breadboard.ConnectGroup(i, j); err != nil {
 		t.Errorf("unexpected error %v", err)
 	}
@@ -78,7 +78,7 @@ func TestBreadboard_ConnectGroup(t *testing.T) {
 	if breadboard.Get(Pin{ID: j, Index: 5}) != 1 {
 		t.Errorf("expected 1 but got %d", breadboard.Get(Pin{ID: j, Index: 0}))
 	}
-	k := breadboard.Allocate(8, Noop)
+	k := breadboard.Allocate(8, nil)
 	if err := breadboard.ConnectGroup(j, k); err != nil {
 		t.Errorf("unexpected error %v", err)
 	}

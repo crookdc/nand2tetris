@@ -12,7 +12,7 @@ var (
 )
 
 func NAND(breadboard *Breadboard) (input ID, output ID) {
-	output = breadboard.Allocate(1, Noop)
+	output = breadboard.Allocate(1, nil)
 	input = breadboard.Allocate(2, func(id ID, bytes []byte) {
 		if bytes[0] == 0 || bytes[1] == 0 {
 			breadboard.Set(Pin{
@@ -52,11 +52,11 @@ func (ev *Evaluator) Evaluate(main ChipDefinition) (Chip, error) {
 		Outputs: make([]ID, len(main.Outputs)),
 	}
 	for param, size := range main.Inputs {
-		id := ev.Breadboard.Allocate(int(size), Noop)
+		id := ev.Breadboard.Allocate(int(size), nil)
 		compiled.Inputs[param] = id
 	}
 	for i, size := range main.Outputs {
-		id := ev.Breadboard.Allocate(int(size), Noop)
+		id := ev.Breadboard.Allocate(int(size), nil)
 		compiled.Outputs[i] = id
 	}
 	var counter int
@@ -83,7 +83,7 @@ func (ev *Evaluator) expression(chip *Chip, exp Expression) ([]ID, error) {
 	case CallExpression:
 		return ev.evaluateCallExpression(chip, e)
 	case IntegerExpression:
-		id := ev.Breadboard.Allocate(1, Noop)
+		id := ev.Breadboard.Allocate(1, nil)
 		ev.Breadboard.Set(Pin{ID: id, Index: 0}, byte(e.Integer))
 		return []ID{id}, nil
 	case IndexedExpression:
@@ -157,7 +157,7 @@ func (ev *Evaluator) evaluateSupportChipInvocation(chip *Chip, e CallExpression)
 
 func (ev *Evaluator) evaluateIndexedExpression(chip *Chip, e IndexedExpression) (ID, error) {
 	head := chip.Inputs[e.Identifier]
-	tail := ev.Breadboard.Allocate(1, Noop)
+	tail := ev.Breadboard.Allocate(1, nil)
 	ev.Breadboard.Connect(Wire{
 		Head: Pin{
 			ID:    head,
@@ -177,7 +177,7 @@ func (ev *Evaluator) evaluateIdentifierExpression(chip *Chip, e IdentifierExpres
 }
 
 func (ev *Evaluator) evaluateArrayExpression(chip *Chip, e ArrayExpression) (ID, error) {
-	array := ev.Breadboard.Allocate(len(e.Values), Noop)
+	array := ev.Breadboard.Allocate(len(e.Values), nil)
 	for i := range e.Values {
 		head, err := ev.expression(chip, e.Values[i])
 		if err != nil {
