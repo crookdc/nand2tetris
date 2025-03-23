@@ -9,3 +9,23 @@ chip full_adder (a: 1, b: 1, c: 1) -> (1, 1) {
     out or(in: [ac, bc])
     out bs
 }
+
+chip adder_16 (a: 16, b: 16) -> (16) {
+    set c1, s1 = full_adder(a: a.15, b: b.15, c: 0)
+    set c2, s2 = full_adder(a: a.14, b: b.14, c: c1)
+    set c3, s3 = full_adder(a: a.13, b: b.13, c: c2)
+    set c4, s4 = full_adder(a: a.12, b: b.12, c: c3)
+    set c5, s5 = full_adder(a: a.11, b: b.11, c: c4)
+    set c6, s6 = full_adder(a: a.10, b: b.10, c: c5)
+    set c7, s7 = full_adder(a: a.9, b: b.9, c: c6)
+    set c8, s8 = full_adder(a: a.8, b: b.8, c: c7)
+    set c9, s9 = full_adder(a: a.7, b: b.7, c: c8)
+    set c10, s10 = full_adder(a: a.6, b: b.6, c: c9)
+    set c11, s11 = full_adder(a: a.5, b: b.5, c: c10)
+    set c12, s12 = full_adder(a: a.4, b: b.4, c: c11)
+    set c13, s13 = full_adder(a: a.3, b: b.3, c: c12)
+    set c14, s14 = full_adder(a: a.2, b: b.2, c: c13)
+    set c15, s15 = full_adder(a: a.1, b: b.1, c: c14)
+    set c16, s16 = full_adder(a: a.0, b: b.0, c: c15)
+    out [s16, s15, s14, s13, s12, s11, s10, s9, s8, s7, s6, s5, s4, s3, s2, s1]
+}

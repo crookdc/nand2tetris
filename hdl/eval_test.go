@@ -11,6 +11,7 @@ func TestNAND(t *testing.T) {
 		ID:    input,
 		Index: 0,
 	}, 1)
+	Tick(breadboard)
 	if breadboard.Get(Pin{ID: output, Index: 0}) != 1 {
 		t.Errorf("expected output to be 1 but got %v", breadboard.Get(Pin{ID: output, Index: 0}))
 	}
@@ -18,6 +19,7 @@ func TestNAND(t *testing.T) {
 		ID:    input,
 		Index: 1,
 	}, 1)
+	Tick(breadboard)
 	if breadboard.Get(Pin{ID: output, Index: 0}) != 0 {
 		t.Errorf("expected output to be 0 but got %v", breadboard.Get(Pin{ID: output, Index: 0}))
 	}
@@ -25,6 +27,7 @@ func TestNAND(t *testing.T) {
 		ID:    input,
 		Index: 0,
 	}, 0)
+	Tick(breadboard)
 	if breadboard.Get(Pin{ID: output, Index: 0}) != 1 {
 		t.Errorf("expected output to be 1 but got %v", breadboard.Get(Pin{ID: output, Index: 0}))
 	}
@@ -124,6 +127,7 @@ func TestEvaluator_Evaluate(t *testing.T) {
 		ID:    compiled.Environment["in"],
 		Index: 0,
 	}, 1)
+	Tick(compiler.Breadboard)
 	if compiler.Breadboard.Get(Pin{ID: compiled.Outputs[0], Index: 0}) != 1 {
 		t.Errorf("expected TST 1 to equal 1")
 	}
@@ -132,6 +136,7 @@ func TestEvaluator_Evaluate(t *testing.T) {
 		ID:    compiled.Environment["in"],
 		Index: 0,
 	}, 0)
+	Tick(compiler.Breadboard)
 	if compiler.Breadboard.Get(Pin{ID: compiled.Outputs[0], Index: 0}) != 0 {
 		t.Errorf("expected TST 0 to equal 0")
 	}

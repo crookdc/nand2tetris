@@ -1,6 +1,8 @@
 package hdl
 
-import "errors"
+import (
+	"errors"
+)
 
 var (
 	ErrInvalidID        = errors.New("invalid id")
@@ -35,9 +37,12 @@ type ID = int
 
 func NewBreadboard() *Breadboard {
 	return &Breadboard{
-		groups:    make([]group, 0),
-		wires:     make(map[Pin][]Pin),
-		callbacks: make(map[ID]Callback),
+		groups: make([]group, 0),
+		wires:  make(map[Pin][]Pin),
+		changeset: &changeset{
+			keys:  make(map[Pin]struct{}),
+			queue: make([]Pin, 0),
+		},
 	}
 }
 
@@ -46,10 +51,37 @@ type group struct {
 	pins     []signal
 }
 
+type changeset struct {
+	keys  map[Pin]struct{}
+	queue []Pin
+}
+
+func (cs *changeset) enqueue(v Pin) {
+	if _, ok := cs.keys[v]; ok {
+		return
+	}
+	cs.queue = append(cs.queue, v)
+	cs.keys[v] = struct{}{}
+}
+
+func (cs *changeset) dequeue() Pin {
+	if len(cs.queue) == 0 {
+		panic("dequeue called on empty queue")
+	}
+	element := cs.queue[0]
+	cs.queue = cs.queue[1:]
+	delete(cs.keys, element)
+	return element
+}
+
+func (cs *changeset) more() bool {
+	return len(cs.queue) > 0
+}
+
 type Breadboard struct {
 	groups    []group
 	wires     map[Pin][]Pin
-	callbacks map[ID]Callback
+	changeset *changeset
 }
 
 // SizeOf returns the length of the group registered under the provided ID. An error is returned if the ID is not
@@ -70,7 +102,6 @@ func (b *Breadboard) Allocate(count int, cb Callback) ID {
 		callback: cb,
 		pins:     make([]signal, count),
 	})
-	b.callbacks[id] = cb
 	return id
 }
 
@@ -89,7 +120,7 @@ func (b *Breadboard) Connect(wire Wire) {
 
 func (b *Breadboard) connect(wire Wire) {
 	b.wires[wire.Head] = append(b.wires[wire.Head], wire.Tail)
-	b.set(wire.Head, b.Get(wire.Head))
+	b.changeset.enqueue(wire.Head)
 }
 
 // ConnectGroup is a convenience method that connects all groups of the groups identified by the supplied ID's with head
@@ -152,27 +183,31 @@ func (b *Breadboard) SetGroup(id ID, values []byte) error {
 		if b.Get(pin) == values[i] {
 			continue
 		}
-		// If optimization is needed when setting groups this is the first place to revisit. Just calling set for each
-		// pin is rather clean, but it does run the callback for each pin being set rather than just once at the end
-		// after all groups have been set.
 		b.set(pin, values[i])
 	}
 	return nil
 }
 
 func (b *Breadboard) set(pin Pin, value byte) {
-	g := b.groups[pin.ID]
-	g.pins[pin.Index].set(value)
-	if g.callback != nil {
+	b.changeset.enqueue(pin)
+	b.groups[pin.ID].pins[pin.Index].set(value)
+}
+
+func Tick(b *Breadboard) {
+	for b.changeset.more() {
+		pin := b.changeset.dequeue()
 		pins, _ := b.GetGroup(pin.ID)
-		g.callback(pin.ID, pins)
-	}
-	children, ok := b.wires[pin]
-	if !ok {
-		return
-	}
-	for _, child := range children {
-		b.set(child, value)
+		g := b.groups[pin.ID]
+		if g.callback != nil {
+			g.callback(pin.ID, pins)
+		}
+		children, ok := b.wires[pin]
+		if !ok {
+			continue
+		}
+		for _, child := range children {
+			b.set(child, pins[pin.Index])
+		}
 	}
 }
 

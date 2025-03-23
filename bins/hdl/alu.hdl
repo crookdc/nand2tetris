@@ -1,0 +1,105 @@
+chip alu (x: 16, y: 16, zx: 1, nx: 1, zy: 1, ny: 1, f: 1, n: 1) -> (16, 1, 1) {
+    set px = xor_16_to_1(
+        a: and_16_to_1(
+            a: x,
+            b: not(in: zx)
+        ),
+        b: nx
+    )
+    set py = xor_16_to_1(
+        a: and_16_to_1(
+            a: y,
+            b: not(in: zy)
+        ),
+        b: ny
+    )
+    set result = xor_16_to_1(
+        a: mux_2(
+            s: f,
+            a: and_16(a: px, b: py),
+            b: adder_16(a: px, b: py)
+        ),
+        b: n
+    )
+
+    out result
+    out not(
+        in: or(
+            in: [
+                result.0,
+                or(
+                    in: [
+                        result.1,
+                        or(
+                            in: [
+                                result.2,
+                                or(
+                                    in: [
+                                        result.3,
+                                        or(
+                                            in: [
+                                                result.4,
+                                                or(
+                                                    in: [
+                                                        result.5,
+                                                        or(
+                                                            in: [
+                                                                result.6,
+                                                                or(
+                                                                    in: [
+                                                                        result.7,
+                                                                        or(
+                                                                            in: [
+                                                                                result.8,
+                                                                                or(
+                                                                                    in: [
+                                                                                        result.9,
+                                                                                        or(
+                                                                                            in: [
+                                                                                                result.10,
+                                                                                                or(
+                                                                                                    in: [
+                                                                                                        result.11,
+                                                                                                        or(
+                                                                                                            in: [
+                                                                                                                result.12,
+                                                                                                                or(
+                                                                                                                    in: [
+                                                                                                                        result.13,
+                                                                                                                        or(
+                                                                                                                            in: [
+                                                                                                                                result.14,
+                                                                                                                                result.15
+                                                                                                                            ]
+                                                                                                                        )
+                                                                                                                    ]
+                                                                                                                )
+                                                                                                            ]
+                                                                                                        )
+                                                                                                    ]
+                                                                                                )
+                                                                                            ]
+                                                                                        )
+                                                                                    ]
+                                                                                )
+                                                                            ]
+                                                                        )
+                                                                    ]
+                                                                )
+                                                            ]
+                                                        )
+                                                    ]
+                                                )
+                                            ]
+                                        )
+                                    ]
+                                )
+                            ]
+                        )
+                    ]
+                )
+            ]
+        )
+    )
+    out result.0
+}
