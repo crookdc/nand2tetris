@@ -1,0 +1,11 @@
+chip half_adder (a: 1, b: 1) -> (1, 1) {
+    out and(in: [a, b])
+    out xor(in: [a, b])
+}
+
+chip full_adder (a: 1, b: 1, c: 1) -> (1, 1) {
+    set ac, as = half_adder(a: a, b: b)
+    set bc, bs = half_adder(a: as, b: c)
+    out or(in: [ac, bc])
+    out bs
+}

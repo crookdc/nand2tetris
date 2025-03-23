@@ -30,8 +30,8 @@ func NAND(breadboard *Breadboard) (input ID, output ID) {
 }
 
 type Chip struct {
-	Inputs  map[string]ID
-	Outputs []ID
+	Environment map[string]ID
+	Outputs     []ID
 }
 
 func NewEvaluator(support map[string]ChipDefinition) *Evaluator {
@@ -48,12 +48,12 @@ type Evaluator struct {
 
 func (ev *Evaluator) Evaluate(main ChipDefinition) (Chip, error) {
 	compiled := Chip{
-		Inputs:  make(map[string]ID),
-		Outputs: make([]ID, len(main.Outputs)),
+		Environment: make(map[string]ID),
+		Outputs:     make([]ID, len(main.Outputs)),
 	}
 	for param, size := range main.Inputs {
 		id := ev.Breadboard.Allocate(int(size), nil)
-		compiled.Inputs[param] = id
+		compiled.Environment[param] = id
 	}
 	for i, size := range main.Outputs {
 		id := ev.Breadboard.Allocate(int(size), nil)
@@ -70,6 +70,18 @@ func (ev *Evaluator) Evaluate(main ChipDefinition) (Chip, error) {
 			for _, id := range ids {
 				compiled.Outputs[counter] = id
 				counter++
+			}
+		case SetStatement:
+			ids, err := ev.expression(&compiled, s.Expression)
+			if err != nil {
+				return Chip{}, err
+			}
+			for i, id := range ids {
+				ident := s.Identifiers[i]
+				if _, ok := compiled.Environment[ident]; ok {
+					return Chip{}, fmt.Errorf("cannot redeclare identifier %s", ident)
+				}
+				compiled.Environment[ident] = id
 			}
 		default:
 			panic("not implemented")
@@ -148,7 +160,7 @@ func (ev *Evaluator) evaluateSupportChipInvocation(chip *Chip, e CallExpression)
 		if len(val) != 1 {
 			return nil, ErrInvalidArgumentExpression
 		}
-		if err := ev.Breadboard.ConnectGroup(val[0], ch.Inputs[arg]); err != nil {
+		if err := ev.Breadboard.ConnectGroup(val[0], ch.Environment[arg]); err != nil {
 			return nil, err
 		}
 	}
@@ -156,7 +168,7 @@ func (ev *Evaluator) evaluateSupportChipInvocation(chip *Chip, e CallExpression)
 }
 
 func (ev *Evaluator) evaluateIndexedExpression(chip *Chip, e IndexedExpression) (ID, error) {
-	head := chip.Inputs[e.Identifier]
+	head := chip.Environment[e.Identifier]
 	tail := ev.Breadboard.Allocate(1, nil)
 	ev.Breadboard.Connect(Wire{
 		Head: Pin{
@@ -172,7 +184,7 @@ func (ev *Evaluator) evaluateIndexedExpression(chip *Chip, e IndexedExpression) 
 }
 
 func (ev *Evaluator) evaluateIdentifierExpression(chip *Chip, e IdentifierExpression) (ID, error) {
-	head := chip.Inputs[e.Identifier]
+	head := chip.Environment[e.Identifier]
 	return head, nil
 }
 

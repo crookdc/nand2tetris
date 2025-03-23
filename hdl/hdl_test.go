@@ -281,6 +281,174 @@ func TestHDL(t *testing.T) {
 				{1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1},
 			},
 		},
+		{
+			chip: "dmux_4",
+			inputs: map[string][]byte{
+				"s":  {0, 0},
+				"in": {1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1},
+			},
+			expected: [][]byte{
+				{1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1},
+				{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			},
+		},
+		{
+			chip: "dmux_4",
+			inputs: map[string][]byte{
+				"s":  {0, 1},
+				"in": {1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1},
+			},
+			expected: [][]byte{
+				{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				{1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1},
+				{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			},
+		},
+		{
+			chip: "dmux_4",
+			inputs: map[string][]byte{
+				"s":  {1, 0},
+				"in": {1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1},
+			},
+			expected: [][]byte{
+				{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				{1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1},
+				{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			},
+		},
+		{
+			chip: "dmux_4",
+			inputs: map[string][]byte{
+				"s":  {1, 1},
+				"in": {1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1},
+			},
+			expected: [][]byte{
+				{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				{1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1},
+			},
+		},
+		{
+			chip: "half_adder",
+			inputs: map[string][]byte{
+				"a": {0},
+				"b": {0},
+			},
+			expected: [][]byte{
+				{0},
+				{0},
+			},
+		},
+		{
+			chip: "half_adder",
+			inputs: map[string][]byte{
+				"a": {0},
+				"b": {1},
+			},
+			expected: [][]byte{
+				{0},
+				{1},
+			},
+		},
+		{
+			chip: "half_adder",
+			inputs: map[string][]byte{
+				"a": {1},
+				"b": {0},
+			},
+			expected: [][]byte{
+				{0},
+				{1},
+			},
+		},
+		{
+			chip: "half_adder",
+			inputs: map[string][]byte{
+				"a": {1},
+				"b": {1},
+			},
+			expected: [][]byte{
+				{1},
+				{0},
+			},
+		},
+		{
+			chip: "full_adder",
+			inputs: map[string][]byte{
+				"a": {0},
+				"b": {0},
+				"c": {0},
+			},
+			expected: [][]byte{
+				{0},
+				{0},
+			},
+		},
+		{
+			chip: "full_adder",
+			inputs: map[string][]byte{
+				"a": {0},
+				"b": {0},
+				"c": {1},
+			},
+			expected: [][]byte{
+				{0},
+				{1},
+			},
+		},
+		{
+			chip: "full_adder",
+			inputs: map[string][]byte{
+				"a": {0},
+				"b": {1},
+				"c": {0},
+			},
+			expected: [][]byte{
+				{0},
+				{1},
+			},
+		},
+		{
+			chip: "full_adder",
+			inputs: map[string][]byte{
+				"a": {1},
+				"b": {0},
+				"c": {0},
+			},
+			expected: [][]byte{
+				{0},
+				{1},
+			},
+		},
+		{
+			chip: "full_adder",
+			inputs: map[string][]byte{
+				"a": {0},
+				"b": {1},
+				"c": {1},
+			},
+			expected: [][]byte{
+				{1},
+				{0},
+			},
+		},
+		{
+			chip: "full_adder",
+			inputs: map[string][]byte{
+				"a": {1},
+				"b": {1},
+				"c": {1},
+			},
+			expected: [][]byte{
+				{1},
+				{1},
+			},
+		},
 	}
 
 	for _, test := range tests {
@@ -291,7 +459,7 @@ func TestHDL(t *testing.T) {
 				t.Fatal(err)
 			}
 			for arg, value := range test.inputs {
-				if err := compiler.Breadboard.SetGroup(chip.Inputs[arg], value); err != nil {
+				if err := compiler.Breadboard.SetGroup(chip.Environment[arg], value); err != nil {
 					t.Fatal(err)
 				}
 			}

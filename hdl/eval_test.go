@@ -121,7 +121,7 @@ func TestEvaluator_Evaluate(t *testing.T) {
 	}
 
 	compiler.Breadboard.Set(Pin{
-		ID:    compiled.Inputs["in"],
+		ID:    compiled.Environment["in"],
 		Index: 0,
 	}, 1)
 	if compiler.Breadboard.Get(Pin{ID: compiled.Outputs[0], Index: 0}) != 1 {
@@ -129,7 +129,7 @@ func TestEvaluator_Evaluate(t *testing.T) {
 	}
 
 	compiler.Breadboard.Set(Pin{
-		ID:    compiled.Inputs["in"],
+		ID:    compiled.Environment["in"],
 		Index: 0,
 	}, 0)
 	if compiler.Breadboard.Get(Pin{ID: compiled.Outputs[0], Index: 0}) != 0 {
