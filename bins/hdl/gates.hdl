@@ -1,0 +1,120 @@
+chip not (in: 1) -> (1) {
+	out nand(in: [in.0, 1])
+}
+
+chip not_16 (in: 16) -> (16) {
+    out [
+        not(in: in.0),
+        not(in: in.1),
+        not(in: in.2),
+        not(in: in.3),
+        not(in: in.4),
+        not(in: in.5),
+        not(in: in.6),
+        not(in: in.7),
+        not(in: in.8),
+        not(in: in.9),
+        not(in: in.10),
+        not(in: in.11),
+        not(in: in.12),
+        not(in: in.13),
+        not(in: in.14),
+        not(in: in.15)
+    ]
+}
+
+chip and (in: 2) -> (1) {
+	out not(in: nand(in: [in.0, in.1]))
+}
+
+chip and_16 (a: 16, b: 16) -> (16) {
+	out [
+		and(in: [a.0, b.0]),
+		and(in: [a.1, b.1]),
+		and(in: [a.2, b.2]),
+		and(in: [a.3, b.3]),
+		and(in: [a.4, b.4]),
+		and(in: [a.5, b.5]),
+		and(in: [a.6, b.6]),
+		and(in: [a.7, b.7]),
+		and(in: [a.8, b.8]),
+		and(in: [a.9, b.9]),
+		and(in: [a.10, b.10]),
+		and(in: [a.11, b.11]),
+		and(in: [a.12, b.12]),
+		and(in: [a.13, b.13]),
+		and(in: [a.14, b.14]),
+	    and(in: [a.15, b.15])
+    ]
+}
+
+chip and_16_to_1 (a: 16, b: 1) -> (16) {
+	out [
+		and(in: [a.0, b]),
+		and(in: [a.1, b]),
+		and(in: [a.2, b]),
+		and(in: [a.3, b]),
+		and(in: [a.4, b]),
+		and(in: [a.5, b]),
+		and(in: [a.6, b]),
+		and(in: [a.7, b]),
+		and(in: [a.8, b]),
+		and(in: [a.9, b]),
+		and(in: [a.10, b]),
+		and(in: [a.11, b]),
+		and(in: [a.12, b]),
+		and(in: [a.13, b]),
+		and(in: [a.14, b]),
+	    and(in: [a.15, b])
+    ]
+}
+
+chip or (in: 2) -> (1) {
+    out nand(in: [not(in: in.0), not(in: in.1)])
+}
+
+chip or_16 (a: 16, b: 16) -> (16) {
+	out [
+		or(in: [a.0, b.0]),
+		or(in: [a.1, b.1]),
+		or(in: [a.2, b.2]),
+		or(in: [a.3, b.3]),
+		or(in: [a.4, b.4]),
+		or(in: [a.5, b.5]),
+		or(in: [a.6, b.6]),
+		or(in: [a.7, b.7]),
+		or(in: [a.8, b.8]),
+		or(in: [a.9, b.9]),
+		or(in: [a.10, b.10]),
+		or(in: [a.11, b.11]),
+		or(in: [a.12, b.12]),
+		or(in: [a.13, b.13]),
+		or(in: [a.14, b.14]),
+	    or(in: [a.15, b.15])
+    ]
+}
+
+chip xor (in: 2) -> (1) {
+    out or(in: [and(in: [in.0, not(in: in.1)]), and(in: [not(in: in.0), in.1])])
+}
+
+chip xor_16 (a: 16, b: 16) -> (16) {
+	out [
+		xor(in: [a.0, b.0]),
+		xor(in: [a.1, b.1]),
+		xor(in: [a.2, b.2]),
+		xor(in: [a.3, b.3]),
+		xor(in: [a.4, b.4]),
+		xor(in: [a.5, b.5]),
+		xor(in: [a.6, b.6]),
+		xor(in: [a.7, b.7]),
+		xor(in: [a.8, b.8]),
+		xor(in: [a.9, b.9]),
+		xor(in: [a.10, b.10]),
+		xor(in: [a.11, b.11]),
+		xor(in: [a.12, b.12]),
+		xor(in: [a.13, b.13]),
+		xor(in: [a.14, b.14]),
+	    xor(in: [a.15, b.15])
+    ]
+}

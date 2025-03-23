@@ -9,136 +9,77 @@ import (
 func TestChipParser_ParseChip(t *testing.T) {
 	tests := []struct {
 		src  string
-		chip Chip
+		chip ChipDefinition
 		err  error
 	}{
 		{
 			src: `chip and (a: 1, b: 1) -> (1) {}`,
-			chip: Chip{
-				name: "and",
-				inputs: map[string]int{
+			chip: ChipDefinition{
+				Name: "and",
+				Inputs: map[string]byte{
 					"a": 1,
 					"b": 1,
 				},
-				outputs: []int{
+				Outputs: []byte{
 					1,
 				},
-				body: []Statement{},
+				Body: []Statement{},
 			},
 			err: nil,
 		},
 		{
 			src: `chip mux (s: 2, n: 16) -> (16, 16, 16, 16) {}`,
-			chip: Chip{
-				name: "mux",
-				inputs: map[string]int{
+			chip: ChipDefinition{
+				Name: "mux",
+				Inputs: map[string]byte{
 					"s": 2,
 					"n": 16,
 				},
-				outputs: []int{
+				Outputs: []byte{
 					16,
 					16,
 					16,
 					16,
 				},
-				body: []Statement{},
+				Body: []Statement{},
 			},
 			err: nil,
 		},
 		{
 			src: `chip not16 (n: 16) -> (16) {}`,
-			chip: Chip{
-				name: "not16",
-				inputs: map[string]int{
+			chip: ChipDefinition{
+				Name: "not16",
+				Inputs: map[string]byte{
 					"n": 16,
 				},
-				outputs: []int{
+				Outputs: []byte{
 					16,
 				},
-				body: []Statement{},
-			},
-			err: nil,
-		},
-		{
-			src: `
-			chip not16 (n: 16) -> (16) {
-				set one = 1
-			}`,
-			chip: Chip{
-				name: "not16",
-				inputs: map[string]int{
-					"n": 16,
-				},
-				outputs: []int{
-					16,
-				},
-				body: []Statement{
-					SetStatement{
-						identifier: "one",
-						expression: IntegerExpression{literal: 1},
-					},
-				},
+				Body: []Statement{},
 			},
 			err: nil,
 		},
 		{
 			src: `
 			chip not16 (n: 16) -> (1, 1) {
-				set one = 1
 				out n
 				out 1
 			}`,
-			chip: Chip{
-				name: "not16",
-				inputs: map[string]int{
+			chip: ChipDefinition{
+				Name: "not16",
+				Inputs: map[string]byte{
 					"n": 16,
 				},
-				outputs: []int{
+				Outputs: []byte{
 					1,
 					1,
 				},
-				body: []Statement{
-					SetStatement{
-						identifier: "one",
-						expression: IntegerExpression{literal: 1},
+				Body: []Statement{
+					OutStatement{
+						Expression: IdentifierExpression{Identifier: "n"},
 					},
 					OutStatement{
-						expression: IdentifierExpression{literal: "n"},
-					},
-					OutStatement{
-						expression: IntegerExpression{literal: 1},
-					},
-				},
-			},
-			err: nil,
-		},
-		{
-			src: `
-			chip not (n: 1) -> (1, 1) {
-				out nand(a: n, b: 0)
-				out n
-			}`,
-			chip: Chip{
-				name: "not",
-				inputs: map[string]int{
-					"n": 1,
-				},
-				outputs: []int{
-					1,
-					1,
-				},
-				body: []Statement{
-					OutStatement{
-						expression: CallExpression{
-							name: "nand",
-							args: map[string]Expression{
-								"a": IdentifierExpression{literal: "n"},
-								"b": IntegerExpression{literal: 0},
-							},
-						},
-					},
-					OutStatement{
-						expression: IdentifierExpression{literal: "n"},
+						Expression: IntegerExpression{Integer: 1},
 					},
 				},
 			},
@@ -147,32 +88,66 @@ func TestChipParser_ParseChip(t *testing.T) {
 		{
 			src: `
 			chip and (a: 1, b: 1) -> (1) {
-				out nand(a: not(a: a), b: not(a: b))
+				out nand(a: not(a: a.0), b: not(a: b.0))
 			}`,
-			chip: Chip{
-				name: "and",
-				inputs: map[string]int{
+			chip: ChipDefinition{
+				Name: "and",
+				Inputs: map[string]byte{
 					"a": 1,
 					"b": 1,
 				},
-				outputs: []int{
+				Outputs: []byte{
 					1,
 				},
-				body: []Statement{
+				Body: []Statement{
 					OutStatement{
-						expression: CallExpression{
-							name: "nand",
-							args: map[string]Expression{
+						Expression: CallExpression{
+							Name: "nand",
+							Args: map[string]Expression{
 								"a": CallExpression{
-									name: "not",
-									args: map[string]Expression{
-										"a": IdentifierExpression{literal: "a"},
+									Name: "not",
+									Args: map[string]Expression{
+										"a": IndexedExpression{Identifier: "a", Index: 0},
 									},
 								},
 								"b": CallExpression{
-									name: "not",
-									args: map[string]Expression{
-										"a": IdentifierExpression{literal: "b"},
+									Name: "not",
+									Args: map[string]Expression{
+										"a": IndexedExpression{Identifier: "b", Index: 0},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			src: `
+			chip not (in: 1) -> (1) {
+				out nand(in: [in.0, 1])
+			}`,
+			chip: ChipDefinition{
+				Name: "not",
+				Inputs: map[string]byte{
+					"in": 1,
+				},
+				Outputs: []byte{
+					1,
+				},
+				Body: []Statement{
+					OutStatement{
+						Expression: CallExpression{
+							Name: "nand",
+							Args: map[string]Expression{
+								"in": ArrayExpression{
+									Values: []Expression{
+										IndexedExpression{
+											Identifier: "in",
+											Index:      0,
+										},
+										IntegerExpression{Integer: 1},
 									},
 								},
 							},
@@ -185,13 +160,13 @@ func TestChipParser_ParseChip(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.src, func(t *testing.T) {
-			parser := Parser{lexer: lexer{src: test.src}}
+			parser := Parser{lexer: Lexer{Source: test.src}}
 			ch, err := parser.Parse()
 			if !errors.Is(err, test.err) {
 				t.Errorf("expected err to be %v but got %v", test.err, err)
 			}
-			if !reflect.DeepEqual(ch, test.chip) {
-				t.Errorf("expected chip to equal %v but got %v", test.chip, ch)
+			if !reflect.DeepEqual(ch[0], test.chip) {
+				t.Errorf("expected chip to equal %v but got %v", test.chip, ch[0])
 			}
 		})
 	}

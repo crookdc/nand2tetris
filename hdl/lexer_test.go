@@ -134,7 +134,7 @@ func TestLexer_Next(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			l := lexer{src: test.src}
+			l := Lexer{Source: test.src}
 			i := 0
 			for {
 				tok, err := l.next()
