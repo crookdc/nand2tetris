@@ -29,6 +29,19 @@ func NAND(breadboard *Breadboard) (input ID, output ID) {
 	return
 }
 
+func DFF(breadboard *Breadboard) (load ID, input ID, output ID) {
+	output = breadboard.Allocate(1, nil)
+	input = breadboard.Allocate(1, nil)
+	load = breadboard.Allocate(1, func(id ID, bytes []byte) {
+		if bytes[0] == 0 {
+			return
+		}
+		current := breadboard.Get(Pin{ID: input, Index: 0})
+		breadboard.Set(Pin{ID: output, Index: 0}, current)
+	})
+	return
+}
+
 type Chip struct {
 	Environment map[string]ID
 	Outputs     []ID
@@ -125,7 +138,14 @@ func (ev *Evaluator) evaluateCallExpression(chip *Chip, e CallExpression) ([]ID,
 	if e.Name == "nand" {
 		return ev.evaluateNandChipInvocation(chip, e)
 	}
-	return ev.evaluateSupportChipInvocation(chip, e)
+	switch e.Name {
+	case "nand":
+		return ev.evaluateNandChipInvocation(chip, e)
+	case "dff":
+		return ev.evaluateDffChipInvocation(chip, e)
+	default:
+		return ev.evaluateSupportChipInvocation(chip, e)
+	}
 }
 
 func (ev *Evaluator) evaluateNandChipInvocation(chip *Chip, e CallExpression) ([]ID, error) {
@@ -138,6 +158,31 @@ func (ev *Evaluator) evaluateNandChipInvocation(chip *Chip, e CallExpression) ([
 		return nil, ErrInvalidArgumentExpression
 	}
 	if err := ev.Breadboard.ConnectGroup(in[0], input); err != nil {
+		return nil, err
+	}
+	return []ID{output}, nil
+}
+
+func (ev *Evaluator) evaluateDffChipInvocation(chip *Chip, e CallExpression) ([]ID, error) {
+	load, input, output := DFF(ev.Breadboard)
+	in, err := ev.expression(chip, e.Args["in"])
+	if err != nil {
+		return nil, err
+	}
+	if len(in) != 1 {
+		return nil, ErrInvalidArgumentExpression
+	}
+	if err := ev.Breadboard.ConnectGroup(in[0], input); err != nil {
+		return nil, err
+	}
+	l, err := ev.expression(chip, e.Args["load"])
+	if err != nil {
+		return nil, err
+	}
+	if len(l) != 1 {
+		return nil, ErrInvalidArgumentExpression
+	}
+	if err := ev.Breadboard.ConnectGroup(l[0], load); err != nil {
 		return nil, err
 	}
 	return []ID{output}, nil
