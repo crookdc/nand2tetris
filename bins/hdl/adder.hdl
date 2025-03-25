@@ -29,3 +29,7 @@ chip adder_16 (a: 16, b: 16) -> (16) {
     set c16, s16 = full_adder(a: a.0, b: b.0, c: c15)
     out [s16, s15, s14, s13, s12, s11, s10, s9, s8, s7, s6, s5, s4, s3, s2, s1]
 }
+
+chip inc_16(in: 16) -> (16) {
+    out adder_16(a: in, b: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
+}

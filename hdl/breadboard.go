@@ -36,7 +36,7 @@ type Callback func(ID, []byte)
 type ID = int
 
 func NewBreadboard() *Breadboard {
-	return &Breadboard{
+	breadboard := &Breadboard{
 		groups: make([]group, 0),
 		wires:  make(map[Pin][]Pin),
 		changeset: &changeset{
@@ -44,6 +44,12 @@ func NewBreadboard() *Breadboard {
 			queue: make([]Pin, 0),
 		},
 	}
+	breadboard.clk = breadboard.Allocate(1, func(id ID, bytes []byte) {
+		for _, cb := range breadboard.clocked {
+			cb(id, bytes)
+		}
+	})
+	return breadboard
 }
 
 type group struct {
@@ -79,6 +85,8 @@ func (cs *changeset) more() bool {
 }
 
 type Breadboard struct {
+	clk       ID
+	clocked   []Callback
 	groups    []group
 	wires     map[Pin][]Pin
 	changeset *changeset
@@ -103,6 +111,10 @@ func (b *Breadboard) Allocate(count int, cb Callback) ID {
 		pins:     make([]signal, count),
 	})
 	return id
+}
+
+func (b *Breadboard) CLK(cb Callback) {
+	b.clocked = append(b.clocked, cb)
 }
 
 // Connect causes one pin (the tail) to always follow the value of the other (the head). The connection is one-way such
@@ -194,6 +206,11 @@ func (b *Breadboard) set(pin Pin, value byte) {
 }
 
 func Tick(b *Breadboard) {
+	var clk byte
+	if b.Get(Pin{ID: b.clk, Index: 0}) == 0 {
+		clk = 1
+	}
+	b.Set(Pin{ID: b.clk, Index: 0}, clk)
 	for b.changeset.more() {
 		pin := b.changeset.dequeue()
 		pins, _ := b.GetGroup(pin.ID)

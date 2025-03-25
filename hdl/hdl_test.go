@@ -838,3 +838,156 @@ func TestHDL(t *testing.T) {
 		})
 	}
 }
+
+func TestProgramCounter(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping HDL tests in short mode")
+	}
+
+	definitions := make(map[string]hdl.ChipDefinition)
+	err := filepath.WalkDir("../bins/hdl", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if !strings.HasSuffix(path, ".hdl") {
+			return nil
+		}
+		f, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		parser := hdl.NewParser(hdl.Lexer{Source: string(f)})
+		chs, err := parser.Parse()
+		if err != nil {
+			return err
+		}
+		for _, chip := range chs {
+			definitions[chip.Name] = chip
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	type test struct {
+		inputs   map[string][]byte
+		expected [][]byte
+	}
+	tests := []struct {
+		tests []test
+	}{
+		{
+			tests: []test{
+				{
+					inputs: map[string][]byte{
+						"load": {1},
+						"inc":  {0},
+						"rst":  {0},
+						"in":   {1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1},
+					},
+					expected: [][]byte{
+						{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+					},
+				},
+				{
+					inputs: map[string][]byte{
+						"load": {0},
+						"inc":  {0},
+						"rst":  {0},
+						"in":   {1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1},
+					},
+					expected: [][]byte{
+						{1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1},
+					},
+				},
+				{
+					inputs: map[string][]byte{
+						"load": {0},
+						"inc":  {1},
+						"rst":  {0},
+						"in":   {1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1},
+					},
+					expected: [][]byte{
+						{1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1},
+					},
+				},
+				{
+					inputs: map[string][]byte{
+						"load": {0},
+						"inc":  {0},
+						"rst":  {0},
+						"in":   {1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1},
+					},
+					expected: [][]byte{
+						{1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0},
+					},
+				},
+			},
+		},
+		{
+			tests: []test{
+				{
+					inputs: map[string][]byte{
+						"load": {1},
+						"inc":  {0},
+						"rst":  {0},
+						"in":   {1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1},
+					},
+					expected: [][]byte{
+						{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+					},
+				},
+				{
+					inputs: map[string][]byte{
+						"load": {0},
+						"inc":  {0},
+						"rst":  {1},
+						"in":   {1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1},
+					},
+					expected: [][]byte{
+						{1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1},
+					},
+				},
+				{
+					inputs: map[string][]byte{
+						"load": {1},
+						"inc":  {0},
+						"rst":  {0},
+						"in":   {1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1},
+					},
+					expected: [][]byte{
+						{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+					},
+				},
+			},
+		},
+	}
+	for _, test := range tests {
+		compiler := hdl.NewEvaluator(definitions)
+		chip, err := compiler.Evaluate(definitions["program_counter"])
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, step := range test.tests {
+			for arg, value := range step.inputs {
+				if err := compiler.Breadboard.SetGroup(chip.Environment[arg], value); err != nil {
+					t.Fatal(err)
+				}
+			}
+			hdl.Tick(compiler.Breadboard)
+			for i, expected := range step.expected {
+				actual, err := compiler.Breadboard.GetGroup(chip.Outputs[i])
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !reflect.DeepEqual(actual, expected) {
+					t.Errorf("expected %v but got %v on output %d", expected, actual, i)
+				}
+			}
+		}
+	}
+}

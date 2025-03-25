@@ -33,47 +33,6 @@ func TestNAND(t *testing.T) {
 	}
 }
 
-func TestDFF(t *testing.T) {
-	breadboard := NewBreadboard()
-	load, input, output := DFF(breadboard)
-	breadboard.Set(Pin{
-		ID:    input,
-		Index: 0,
-	}, 1)
-	Tick(breadboard)
-	if breadboard.Get(Pin{ID: output, Index: 0}) != 0 {
-		t.Errorf("expected output to be 0 but got %v", breadboard.Get(Pin{ID: output, Index: 0}))
-	}
-	breadboard.Set(Pin{
-		ID:    load,
-		Index: 0,
-	}, 1)
-	Tick(breadboard)
-	if breadboard.Get(Pin{ID: output, Index: 0}) != 1 {
-		t.Errorf("expected output to be 1 but got %v", breadboard.Get(Pin{ID: output, Index: 0}))
-	}
-	breadboard.Set(Pin{
-		ID:    input,
-		Index: 0,
-	}, 0)
-	breadboard.Set(Pin{
-		ID:    load,
-		Index: 0,
-	}, 0)
-	Tick(breadboard)
-	if breadboard.Get(Pin{ID: output, Index: 0}) != 1 {
-		t.Errorf("expected output to be 1 but got %v", breadboard.Get(Pin{ID: output, Index: 0}))
-	}
-	breadboard.Set(Pin{
-		ID:    load,
-		Index: 0,
-	}, 1)
-	Tick(breadboard)
-	if breadboard.Get(Pin{ID: output, Index: 0}) != 0 {
-		t.Errorf("expected output to be 0 but got %v", breadboard.Get(Pin{ID: output, Index: 0}))
-	}
-}
-
 func TestEvaluator_Evaluate(t *testing.T) {
 	compiler := NewEvaluator(map[string]ChipDefinition{
 		"NOT": {

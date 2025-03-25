@@ -29,15 +29,11 @@ func NAND(breadboard *Breadboard) (input ID, output ID) {
 	return
 }
 
-func DFF(breadboard *Breadboard) (load ID, input ID, output ID) {
+func DFF(breadboard *Breadboard) (input ID, output ID) {
 	output = breadboard.Allocate(1, nil)
 	input = breadboard.Allocate(1, nil)
-	load = breadboard.Allocate(1, func(id ID, bytes []byte) {
-		if bytes[0] == 0 {
-			return
-		}
-		current := breadboard.Get(Pin{ID: input, Index: 0})
-		breadboard.Set(Pin{ID: output, Index: 0}, current)
+	breadboard.CLK(func(id ID, bytes []byte) {
+		breadboard.Set(Pin{ID: output, Index: 0}, breadboard.Get(Pin{ID: input, Index: 0}))
 	})
 	return
 }
@@ -81,7 +77,9 @@ func (ev *Evaluator) Evaluate(main ChipDefinition) (Chip, error) {
 				return Chip{}, err
 			}
 			for _, id := range ids {
-				compiled.Outputs[counter] = id
+				if err := ev.Breadboard.ConnectGroup(id, compiled.Outputs[counter]); err != nil {
+					return Chip{}, err
+				}
 				counter++
 			}
 		case SetStatement:
@@ -135,10 +133,9 @@ func (ev *Evaluator) expression(chip *Chip, exp Expression) ([]ID, error) {
 }
 
 func (ev *Evaluator) evaluateCallExpression(chip *Chip, e CallExpression) ([]ID, error) {
-	if e.Name == "nand" {
-		return ev.evaluateNandChipInvocation(chip, e)
-	}
 	switch e.Name {
+	case "feedback":
+		return chip.Outputs, nil
 	case "nand":
 		return ev.evaluateNandChipInvocation(chip, e)
 	case "dff":
@@ -164,7 +161,7 @@ func (ev *Evaluator) evaluateNandChipInvocation(chip *Chip, e CallExpression) ([
 }
 
 func (ev *Evaluator) evaluateDffChipInvocation(chip *Chip, e CallExpression) ([]ID, error) {
-	load, input, output := DFF(ev.Breadboard)
+	input, output := DFF(ev.Breadboard)
 	in, err := ev.expression(chip, e.Args["in"])
 	if err != nil {
 		return nil, err
@@ -173,16 +170,6 @@ func (ev *Evaluator) evaluateDffChipInvocation(chip *Chip, e CallExpression) ([]
 		return nil, ErrInvalidArgumentExpression
 	}
 	if err := ev.Breadboard.ConnectGroup(in[0], input); err != nil {
-		return nil, err
-	}
-	l, err := ev.expression(chip, e.Args["load"])
-	if err != nil {
-		return nil, err
-	}
-	if len(l) != 1 {
-		return nil, ErrInvalidArgumentExpression
-	}
-	if err := ev.Breadboard.ConnectGroup(l[0], load); err != nil {
 		return nil, err
 	}
 	return []ID{output}, nil
