@@ -32,8 +32,18 @@ func NAND(breadboard *Breadboard) (input ID, output ID) {
 func DFF(breadboard *Breadboard) (input ID, output ID) {
 	output = breadboard.Allocate(1, nil)
 	input = breadboard.Allocate(1, nil)
-	breadboard.CLK(func(id ID, bytes []byte) {
+	clk := breadboard.Allocate(1, func(id ID, bytes []byte) {
 		breadboard.Set(Pin{ID: output, Index: 0}, breadboard.Get(Pin{ID: input, Index: 0}))
+	})
+	breadboard.Connect(Wire{
+		Head: Pin{
+			ID:    breadboard.CLK,
+			Index: 0,
+		},
+		Tail: Pin{
+			ID:    clk,
+			Index: 0,
+		},
 	})
 	return
 }
