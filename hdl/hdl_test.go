@@ -814,19 +814,19 @@ func TestHDL(t *testing.T) {
 	for _, group := range tests {
 		t.Run(group.chip, func(t *testing.T) {
 			for _, test := range group.tests {
-				compiler := hdl.NewEvaluator(definitions)
-				chip, err := compiler.Evaluate(definitions[group.chip])
+				evaluator := hdl.NewEvaluator(definitions)
+				chip, err := evaluator.Evaluate(definitions[group.chip])
 				if err != nil {
 					t.Fatal(err)
 				}
 				for arg, value := range test.inputs {
-					if err := compiler.Breadboard.SetGroup(chip.Environment[arg], value); err != nil {
+					if err := evaluator.Breadboard.SetGroup(chip.Environment[arg], value); err != nil {
 						t.Fatal(err)
 					}
 				}
-				hdl.Tick(compiler.Breadboard)
+				hdl.Tick(evaluator.Breadboard)
 				for i, expected := range test.expected {
-					actual, err := compiler.Breadboard.GetGroup(chip.Outputs[i])
+					actual, err := evaluator.Breadboard.GetGroup(chip.Outputs[i])
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -967,20 +967,20 @@ func TestProgramCounter(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		compiler := hdl.NewEvaluator(definitions)
-		chip, err := compiler.Evaluate(definitions["program_counter"])
+		evaluator := hdl.NewEvaluator(definitions)
+		chip, err := evaluator.Evaluate(definitions["program_counter"])
 		if err != nil {
 			t.Fatal(err)
 		}
 		for _, step := range test.tests {
 			for arg, value := range step.inputs {
-				if err := compiler.Breadboard.SetGroup(chip.Environment[arg], value); err != nil {
+				if err := evaluator.Breadboard.SetGroup(chip.Environment[arg], value); err != nil {
 					t.Fatal(err)
 				}
 			}
-			hdl.Tick(compiler.Breadboard)
+			hdl.Tick(evaluator.Breadboard)
 			for i, expected := range step.expected {
-				actual, err := compiler.Breadboard.GetGroup(chip.Outputs[i])
+				actual, err := evaluator.Breadboard.GetGroup(chip.Outputs[i])
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -989,5 +989,67 @@ func TestProgramCounter(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestCPU(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping HDL tests in short mode")
+	}
+
+	definitions := make(map[string]hdl.ChipDefinition)
+	err := filepath.WalkDir("../bins/hdl", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if !strings.HasSuffix(path, ".hdl") {
+			return nil
+		}
+		f, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		parser := hdl.NewParser(hdl.Lexer{Source: string(f)})
+		chs, err := parser.Parse()
+		if err != nil {
+			return err
+		}
+		for _, chip := range chs {
+			definitions[chip.Name] = chip
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	evaluator := hdl.NewEvaluator(definitions)
+	chip, err := evaluator.Evaluate(definitions["cpu"])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	hdl.Tick(evaluator.Breadboard)
+	value := []byte{0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1}
+	err = evaluator.Breadboard.SetGroup(chip.Environment["instruction"], value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hdl.Tick(evaluator.Breadboard)
+	err = evaluator.Breadboard.SetGroup(chip.Environment["instruction"], []byte{1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	hdl.Tick(evaluator.Breadboard)
+
+	output, err := evaluator.Breadboard.GetGroup(chip.Outputs[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(output, value) {
+		t.Errorf("expected %v but got %v", value, output)
 	}
 }

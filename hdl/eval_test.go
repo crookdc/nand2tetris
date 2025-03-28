@@ -33,111 +33,23 @@ func TestNAND(t *testing.T) {
 	}
 }
 
-func TestEvaluator_Evaluate(t *testing.T) {
-	compiler := NewEvaluator(map[string]ChipDefinition{
-		"NOT": {
-			Name: "NOT",
-			Inputs: map[string]byte{
-				"a": 1,
-			},
-			Outputs: []byte{1},
-			Body: []Statement{
-				OutStatement{
-					Expression: CallExpression{
-						Name: "nand",
-						Args: map[string]Expression{
-							"in": ArrayExpression{
-								Values: []Expression{
-									IndexedExpression{
-										Identifier: "a",
-										Index:      0,
-									},
-									IntegerExpression{Integer: 1},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		"AND": {
-			Name: "AND",
-			Inputs: map[string]byte{
-				"input": 2,
-			},
-			Outputs: []byte{1},
-			Body: []Statement{
-				OutStatement{
-					Expression: CallExpression{
-						Name: "NOT",
-						Args: map[string]Expression{
-							"a": CallExpression{
-								Name: "nand",
-								Args: map[string]Expression{
-									"in": ArrayExpression{
-										Values: []Expression{
-											IndexedExpression{
-												Identifier: "input",
-												Index:      0,
-											},
-											IndexedExpression{
-												Identifier: "input",
-												Index:      1,
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	})
-	compiled, err := compiler.Evaluate(ChipDefinition{
-		Name: "TST",
-		Inputs: map[string]byte{
-			"in": 1,
-		},
-		Outputs: []byte{1},
-		Body: []Statement{
-			OutStatement{
-				Expression: CallExpression{
-					Name: "AND",
-					Args: map[string]Expression{
-						"input": ArrayExpression{
-							Values: []Expression{
-								IndexedExpression{
-									Identifier: "input",
-									Index:      0,
-								},
-								IntegerExpression{Integer: 1},
-							},
-						},
-					},
-				},
-			},
-		},
-	})
-	if err != nil {
-		t.Errorf("unexpected error: %s", err)
+func TestDFF(t *testing.T) {
+	breadboard := NewBreadboard()
+	input, output := DFF(breadboard)
+	breadboard.Set(Pin{ID: input}, 1)
+	if breadboard.Get(Pin{ID: output}) != 0 {
+		t.Errorf("expected DFF output to be 0 before clock")
 	}
-
-	compiler.Breadboard.Set(Pin{
-		ID:    compiled.Environment["in"],
-		Index: 0,
-	}, 1)
-	Tick(compiler.Breadboard)
-	if compiler.Breadboard.Get(Pin{ID: compiled.Outputs[0], Index: 0}) != 1 {
-		t.Errorf("expected TST 1 to equal 1")
+	Tick(breadboard)
+	if breadboard.Get(Pin{ID: output}) != 1 {
+		t.Errorf("expected DFF output to be 1 after clock")
 	}
-
-	compiler.Breadboard.Set(Pin{
-		ID:    compiled.Environment["in"],
-		Index: 0,
-	}, 0)
-	Tick(compiler.Breadboard)
-	if compiler.Breadboard.Get(Pin{ID: compiled.Outputs[0], Index: 0}) != 0 {
-		t.Errorf("expected TST 0 to equal 0")
+	breadboard.Set(Pin{ID: input}, 0)
+	if breadboard.Get(Pin{ID: output}) != 1 {
+		t.Errorf("expected DFF output to be 1 before clock")
+	}
+	Tick(breadboard)
+	if breadboard.Get(Pin{ID: output}) != 0 {
+		t.Errorf("expected DFF output to be 0 after clock")
 	}
 }

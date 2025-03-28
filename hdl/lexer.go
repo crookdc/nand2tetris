@@ -19,9 +19,10 @@ var (
 		'.': dot,
 	}
 	keywords = map[string]variant{
-		"chip": chip,
-		"set":  set,
-		"out":  out,
+		"chip":    chip,
+		"set":     set,
+		"out":     out,
+		"declare": declare,
 	}
 )
 
@@ -30,6 +31,7 @@ const (
 	chip
 	out
 	set
+	declare
 	dot
 	identifier
 	integer
@@ -99,7 +101,7 @@ func (l *Lexer) next() (token, error) {
 		}
 		return token{}, fmt.Errorf("invalid token '%s'", string(char))
 	}
-	if !alphanumerical(char) {
+	if !identifiable(char) {
 		return token{}, fmt.Errorf("invalid token '%s'", string(char))
 	}
 	// Identifiers cannot start with a digit, therefore we must first check if the current character is an integer to
@@ -149,7 +151,7 @@ func (l *Lexer) identifier(c uint8) bool {
 	if unicode.IsSpace(rune(c)) {
 		return false
 	}
-	if alphanumerical(c) {
+	if identifiable(c) {
 		return true
 	}
 	switch c {
@@ -160,8 +162,8 @@ func (l *Lexer) identifier(c uint8) bool {
 	}
 }
 
-func alphanumerical(c uint8) bool {
-	return alphabetical(c) || numerical(c)
+func identifiable(c uint8) bool {
+	return alphabetical(c) || numerical(c) || c == '_'
 }
 
 func alphabetical(c uint8) bool {

@@ -33,7 +33,9 @@ func DFF(breadboard *Breadboard) (input ID, output ID) {
 	output = breadboard.Allocate(1, nil)
 	input = breadboard.Allocate(1, nil)
 	clk := breadboard.Allocate(1, func(id ID, bytes []byte) {
-		breadboard.Set(Pin{ID: output, Index: 0}, breadboard.Get(Pin{ID: input, Index: 0}))
+		if bytes[0] == 1 {
+			breadboard.Set(Pin{ID: output, Index: 0}, breadboard.Get(Pin{ID: input, Index: 0}))
+		}
 	})
 	breadboard.Connect(Wire{
 		Head: Pin{
@@ -66,49 +68,60 @@ type Evaluator struct {
 }
 
 func (ev *Evaluator) Evaluate(main ChipDefinition) (Chip, error) {
-	compiled := Chip{
-		Environment: make(map[string]ID),
-		Outputs:     make([]ID, len(main.Outputs)),
-	}
+	params := make(map[string]ID)
 	for param, size := range main.Inputs {
 		id := ev.Breadboard.Allocate(int(size), nil)
-		compiled.Environment[param] = id
+		params[param] = id
 	}
-	for i, size := range main.Outputs {
+	return ev.evaluateChip(main, params)
+}
+
+func (ev *Evaluator) evaluateChip(definition ChipDefinition, params map[string]ID) (Chip, error) {
+	ch := Chip{
+		Environment: make(map[string]ID),
+		Outputs:     make([]ID, len(definition.Outputs)),
+	}
+	for param, id := range params {
+		ch.Environment[param] = id
+	}
+	for i, size := range definition.Outputs {
 		id := ev.Breadboard.Allocate(int(size), nil)
-		compiled.Outputs[i] = id
+		ch.Outputs[i] = id
 	}
-	var counter int
-	for _, statement := range main.Body {
+	var output int
+	for _, statement := range definition.Body {
 		switch s := statement.(type) {
 		case OutStatement:
-			ids, err := ev.expression(&compiled, s.Expression)
+			ids, err := ev.expression(&ch, s.Expression)
 			if err != nil {
 				return Chip{}, err
 			}
 			for _, id := range ids {
-				if err := ev.Breadboard.ConnectGroup(id, compiled.Outputs[counter]); err != nil {
+				if err := ev.Breadboard.ConnectGroup(id, ch.Outputs[output]); err != nil {
 					return Chip{}, err
 				}
-				counter++
+				output++
 			}
 		case SetStatement:
-			ids, err := ev.expression(&compiled, s.Expression)
+			ids, err := ev.expression(&ch, s.Expression)
 			if err != nil {
 				return Chip{}, err
 			}
 			for i, id := range ids {
 				ident := s.Identifiers[i]
-				if _, ok := compiled.Environment[ident]; ok {
-					return Chip{}, fmt.Errorf("cannot redeclare identifier %s", ident)
+				if ident == "_" {
+					continue
 				}
-				compiled.Environment[ident] = id
+				if _, ok := ch.Environment[ident]; ok {
+					return Chip{}, fmt.Errorf("cannot redeclare identifier '%s'", ident)
+				}
+				ch.Environment[ident] = id
 			}
 		default:
-			panic("not implemented")
+			return Chip{}, fmt.Errorf("unexpected statement '%s'", s.Literal())
 		}
 	}
-	return compiled, nil
+	return ch, nil
 }
 
 func (ev *Evaluator) expression(chip *Chip, exp Expression) ([]ID, error) {
@@ -116,9 +129,10 @@ func (ev *Evaluator) expression(chip *Chip, exp Expression) ([]ID, error) {
 	case CallExpression:
 		return ev.evaluateCallExpression(chip, e)
 	case IntegerExpression:
-		id := ev.Breadboard.Allocate(1, nil)
-		ev.Breadboard.Set(Pin{ID: id, Index: 0}, byte(e.Integer))
-		return []ID{id}, nil
+		if e.Integer == 0 {
+			return []ID{ev.Breadboard.Zero}, nil
+		}
+		return []ID{ev.Breadboard.One}, nil
 	case IndexedExpression:
 		id, err := ev.evaluateIndexedExpression(chip, e)
 		if err != nil {
@@ -190,21 +204,20 @@ func (ev *Evaluator) evaluateSupportChipInvocation(chip *Chip, e CallExpression)
 	if !ok {
 		return nil, ErrChipNotFound
 	}
-	ch, err := ev.Evaluate(definition)
-	if err != nil {
-		return nil, err
-	}
-	for arg, valExpr := range e.Args {
-		val, err := ev.expression(chip, valExpr)
+	params := make(map[string]ID)
+	for arg, expr := range e.Args {
+		val, err := ev.expression(chip, expr)
 		if err != nil {
 			return nil, err
 		}
 		if len(val) != 1 {
 			return nil, ErrInvalidArgumentExpression
 		}
-		if err := ev.Breadboard.ConnectGroup(val[0], ch.Environment[arg]); err != nil {
-			return nil, err
-		}
+		params[arg] = val[0]
+	}
+	ch, err := ev.evaluateChip(definition, params)
+	if err != nil {
+		return nil, err
 	}
 	return ch.Outputs, nil
 }
@@ -226,7 +239,10 @@ func (ev *Evaluator) evaluateIndexedExpression(chip *Chip, e IndexedExpression) 
 }
 
 func (ev *Evaluator) evaluateIdentifierExpression(chip *Chip, e IdentifierExpression) (ID, error) {
-	head := chip.Environment[e.Identifier]
+	head, ok := chip.Environment[e.Identifier]
+	if !ok {
+		return 0, fmt.Errorf("invalid identifier '%s'", e.Identifier)
+	}
 	return head, nil
 }
 

@@ -45,6 +45,9 @@ func NewBreadboard() *Breadboard {
 		},
 	}
 	breadboard.CLK = breadboard.Allocate(1, nil)
+	breadboard.Zero = breadboard.Allocate(1, nil)
+	breadboard.One = breadboard.Allocate(1, nil)
+	breadboard.Set(Pin{ID: breadboard.One, Index: 0}, 1)
 	return breadboard
 }
 
@@ -82,6 +85,8 @@ func (cs *changeset) more() bool {
 
 type Breadboard struct {
 	CLK       ID
+	Zero      ID
+	One       ID
 	groups    []group
 	wires     map[Pin][]Pin
 	changeset *changeset
@@ -131,10 +136,7 @@ func (b *Breadboard) connect(wire Wire) {
 // groups since it only validates the input data once at the start rather than at every call to Connect. However, the end
 // result is the same as doing so.
 func (b *Breadboard) ConnectGroup(head, tail ID) error {
-	if !b.exists(head) {
-		return ErrInvalidID
-	}
-	if !b.exists(tail) {
+	if !b.exists(head) || !b.exists(tail) {
 		return ErrInvalidID
 	}
 	if len(b.groups[head].pins) != len(b.groups[tail].pins) {
@@ -197,11 +199,7 @@ func (b *Breadboard) set(pin Pin, value byte) {
 }
 
 func Tick(b *Breadboard) {
-	var clk byte
-	if b.Get(Pin{ID: b.CLK, Index: 0}) == 0 {
-		clk = 1
-	}
-	b.Set(Pin{ID: b.CLK, Index: 0}, clk)
+	b.Set(Pin{ID: b.CLK, Index: 0}, 1)
 	for b.changeset.more() {
 		pin := b.changeset.dequeue()
 		pins, _ := b.GetGroup(pin.ID)
@@ -217,6 +215,7 @@ func Tick(b *Breadboard) {
 			b.set(child, pins[pin.Index])
 		}
 	}
+	b.Set(Pin{ID: b.CLK, Index: 0}, 0)
 }
 
 func (b *Breadboard) Get(pin Pin) byte {

@@ -1,0 +1,75 @@
+chip cpu (instruction: 16, input_memory: 16, rst: 1) -> (16, 1, 15) {
+    set out_mem, _, _ = feedback()
+    set a_instruction = not(in: instruction.0)
+    set A = register(
+        load: or(in: [a_instruction, instruction.10]),
+        in: mux_2(
+            s: a_instruction,
+            a: out_mem,
+            b: instruction
+        )
+    )
+    set D = register(
+        load: and(in: [instruction.0, instruction.11]),
+        in: out_mem
+    )
+
+    set compute, zr, ng = alu(
+        x: D,
+        y: mux_2(
+            s: and(in: [instruction.0, instruction.3]),
+            a: A,
+            b: input_memory
+        ),
+        zx: instruction.4,
+        nx: instruction.5,
+        zy: instruction.6,
+        ny: instruction.7,
+        f: instruction.8,
+        n: instruction.9
+    )
+
+    set jlt = and(in: [instruction.0, instruction.13])
+    set ldt = or(
+        in: [
+            and(
+                in: [
+                    and(in: [instruction.0, instruction.15]),
+                    and(in: [not(in: ng), not(in: zr)])
+                ]
+            ),
+            and(
+                in: [
+                    and(in: [instruction.0, instruction.14]),
+                    zr
+                ]
+            )
+        ]
+    )
+    set pc = program_counter(
+        in: A,
+        load: or(in: [ldt, and(in: [jlt, ng])]),
+        inc: 1,
+        rst: rst
+    )
+
+    out compute
+    out and(in: [instruction.0, instruction.12])
+    out [
+        pc.0,
+        pc.1,
+        pc.2,
+        pc.3,
+        pc.4,
+        pc.5,
+        pc.6,
+        pc.7,
+        pc.8,
+        pc.9,
+        pc.10,
+        pc.11,
+        pc.12,
+        pc.13,
+        pc.14
+    ]
+}
