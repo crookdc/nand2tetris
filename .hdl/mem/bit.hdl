@@ -1,0 +1,10 @@
+use "../mux/mux.hdl"
+
+chip bit (load: 1, in: 1) -> (1) {
+    set test = mux(
+        s: load,
+        a: feedback(),
+        b: in
+    )
+    out dff(in: test)
+}

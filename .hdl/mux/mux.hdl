@@ -1,0 +1,12 @@
+use "../gates/or.hdl"
+use "../gates/and.hdl"
+use "../gates/not.hdl"
+
+chip mux (s: 1, a: 1, b: 1) -> (1) {
+    out or(
+        in: [
+            and(in: [a, not(in: s)]),
+            and(in: [b, s])
+        ]
+    )
+}

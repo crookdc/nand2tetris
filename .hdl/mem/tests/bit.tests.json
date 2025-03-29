@@ -1,0 +1,47 @@
+[
+  {
+    "inputs": {
+      "load": "1",
+      "in": "1"
+    },
+    "outputs": [
+      "0"
+    ]
+  },
+  {
+    "inputs": {
+      "load": "0",
+      "in": "0"
+    },
+    "outputs": [
+      "1"
+    ]
+  },
+  {
+    "inputs": {
+      "load": "0",
+      "in": "0"
+    },
+    "outputs": [
+      "1"
+    ]
+  },
+  {
+    "inputs": {
+      "load": "1",
+      "in": "0"
+    },
+    "outputs": [
+      "1"
+    ]
+  },
+  {
+    "inputs": {
+      "load": "0",
+      "in": "0"
+    },
+    "outputs": [
+      "0"
+    ]
+  }
+]
