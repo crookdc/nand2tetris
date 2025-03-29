@@ -1,0 +1,24 @@
+chip not (in: 1) -> (1) {
+	out nand(in: [in.0, 1])
+}
+
+chip not_16 (in: 16) -> (16) {
+    out [
+        not(in: in.0),
+        not(in: in.1),
+        not(in: in.2),
+        not(in: in.3),
+        not(in: in.4),
+        not(in: in.5),
+        not(in: in.6),
+        not(in: in.7),
+        not(in: in.8),
+        not(in: in.9),
+        not(in: in.10),
+        not(in: in.11),
+        not(in: in.12),
+        not(in: in.13),
+        not(in: in.14),
+        not(in: in.15)
+    ]
+}

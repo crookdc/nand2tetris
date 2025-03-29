@@ -1,3 +1,6 @@
+use "../gates/and.hdl"
+use "../gates/xor.hdl"
+
 chip half_adder (a: 1, b: 1) -> (1, 1) {
     out and(in: [a, b])
     out xor(in: [a, b])

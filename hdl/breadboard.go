@@ -198,26 +198,6 @@ func (b *Breadboard) set(pin Pin, value byte) {
 	b.groups[pin.ID].pins[pin.Index].set(value)
 }
 
-func Tick(b *Breadboard) {
-	b.Set(Pin{ID: b.CLK, Index: 0}, 1)
-	for b.changeset.more() {
-		pin := b.changeset.dequeue()
-		pins, _ := b.GetGroup(pin.ID)
-		g := b.groups[pin.ID]
-		if g.callback != nil {
-			g.callback(pin.ID, pins)
-		}
-		children, ok := b.wires[pin]
-		if !ok {
-			continue
-		}
-		for _, child := range children {
-			b.set(child, pins[pin.Index])
-		}
-	}
-	b.Set(Pin{ID: b.CLK, Index: 0}, 0)
-}
-
 func (b *Breadboard) Get(pin Pin) byte {
 	if err := b.validate(pin); err != nil {
 		panic(err)
@@ -251,4 +231,24 @@ func (b *Breadboard) exists(id ID) bool {
 		return false
 	}
 	return true
+}
+
+func Tick(b *Breadboard) {
+	b.Set(Pin{ID: b.CLK, Index: 0}, 1)
+	for b.changeset.more() {
+		pin := b.changeset.dequeue()
+		pins, _ := b.GetGroup(pin.ID)
+		g := b.groups[pin.ID]
+		if g.callback != nil {
+			g.callback(pin.ID, pins)
+		}
+		children, ok := b.wires[pin]
+		if !ok {
+			continue
+		}
+		for _, child := range children {
+			b.set(child, pins[pin.Index])
+		}
+	}
+	b.Set(Pin{ID: b.CLK, Index: 0}, 0)
 }

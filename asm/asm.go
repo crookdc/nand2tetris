@@ -2,7 +2,6 @@ package asm
 
 import (
 	"fmt"
-	"github.com/crookdc/nand2tetris/internal/chip"
 	"strconv"
 )
 
@@ -53,12 +52,12 @@ var (
 	}
 )
 
-func Assemble(src string) ([][16]chip.Signal, error) {
+func Assemble(src string) ([][16]byte, error) {
 	mem, err := buildMemoryMap(src)
 	if err != nil {
 		return nil, err
 	}
-	var program [][16]chip.Signal
+	var program [][16]byte
 	ps := parser{
 		lexer: lexer{
 			src: src,
@@ -88,7 +87,15 @@ func Assemble(src string) ([][16]chip.Signal, error) {
 	return program, nil
 }
 
-func assembleLoadInstruction(mem map[string]int, v load) ([16]chip.Signal, error) {
+func wrap(n int) [16]byte {
+	var r [16]byte
+	for i := range 16 {
+		r[i] = byte(n>>16-i) & 1
+	}
+	return r
+}
+
+func assembleLoadInstruction(mem map[string]int, v load) ([16]byte, error) {
 	var bin int
 	var err error
 	if v.value.variant == integer {
@@ -96,19 +103,19 @@ func assembleLoadInstruction(mem map[string]int, v load) ([16]chip.Signal, error
 	} else if v.value.variant == identifier {
 		bin = mem[v.value.literal]
 	} else {
-		return [16]chip.Signal{}, fmt.Errorf("unexpected load token %+v", v.value)
+		return [16]byte{}, fmt.Errorf("unexpected load token %+v", v.value)
 	}
 	if err != nil {
-		return [16]chip.Signal{}, err
+		return [16]byte{}, err
 	}
 	bin = bin & 0b0111_1111_1111_1111
-	return chip.WrapUint16(uint16(bin)).Copy(), nil
+	return wrap(bin), nil
 }
 
-func assembleComputeInstruction(v compute) ([16]chip.Signal, error) {
+func assembleComputeInstruction(v compute) ([16]byte, error) {
 	bin, ok := computations[v.comp]
 	if !ok {
-		return [16]chip.Signal{}, fmt.Errorf("unexpected computational segment %s", v.comp)
+		return [16]byte{}, fmt.Errorf("unexpected computational segment %s", v.comp)
 	}
 	bin = bin << 6
 	if v.dest != nil {
@@ -116,7 +123,7 @@ func assembleComputeInstruction(v compute) ([16]chip.Signal, error) {
 		for i := range v.dest.literal {
 			d, ok := destinations[v.dest.literal[i]]
 			if !ok {
-				return [16]chip.Signal{}, fmt.Errorf("invalid destination %+v", v.dest)
+				return [16]byte{}, fmt.Errorf("invalid destination %+v", v.dest)
 			}
 			dest = dest | d
 		}
@@ -125,12 +132,12 @@ func assembleComputeInstruction(v compute) ([16]chip.Signal, error) {
 	if v.jump != nil {
 		jump, ok := jumps[v.jump.literal]
 		if !ok {
-			return [16]chip.Signal{}, fmt.Errorf("invalid jump %+v", v.jump)
+			return [16]byte{}, fmt.Errorf("invalid jump %+v", v.jump)
 		}
 		bin = bin | jump
 	}
 	bin = bin | 0b1110_0000_0000_0000
-	return chip.WrapUint16(uint16(bin)).Copy(), nil
+	return wrap(bin), nil
 }
 
 func buildMemoryMap(src string) (map[string]int, error) {

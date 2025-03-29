@@ -19,10 +19,10 @@ var (
 		'.': dot,
 	}
 	keywords = map[string]variant{
-		"chip":    chip,
-		"set":     set,
-		"out":     out,
-		"declare": declare,
+		"chip": chip,
+		"set":  set,
+		"out":  out,
+		"use":  use,
 	}
 )
 
@@ -31,7 +31,7 @@ const (
 	chip
 	out
 	set
-	declare
+	use
 	dot
 	identifier
 	integer
@@ -45,6 +45,7 @@ const (
 	leftBracket
 	rightBracket
 	equals
+	stringLiteral
 )
 
 type variant int
@@ -83,6 +84,16 @@ func (l *Lexer) next() (token, error) {
 		}, nil
 	}
 	switch char {
+	case '"':
+		l.cursor++
+		literal := l.literal(func(c uint8) bool {
+			return c != '"'
+		})
+		l.cursor++
+		return token{
+			variant: stringLiteral,
+			literal: literal,
+		}, nil
 	case '/':
 		if l.Source[l.cursor+1] == '/' {
 			if err := l.seek('\n'); err != nil {

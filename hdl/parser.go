@@ -2,9 +2,39 @@ package hdl
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
+
+func ParseFile(filename string) (map[string]ChipStatement, error) {
+	src, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+	p := NewParser(Lexer{Source: string(src)})
+	c := make(map[string]ChipStatement)
+	stmts, err := p.Parse()
+	if err != nil {
+		return nil, err
+	}
+	for _, s := range stmts {
+		switch t := s.(type) {
+		case UseStatement:
+			imported, err := ParseFile(filepath.Join(filepath.Dir(filename), t.FileName))
+			if err != nil {
+				return nil, err
+			}
+			for name, definition := range imported {
+				c[name] = definition
+			}
+		case ChipStatement:
+			c[t.Name] = t
+		}
+	}
+	return c, nil
+}
 
 type Statement interface {
 	Literal() string
@@ -24,50 +54,66 @@ type Parser struct {
 	lexer Lexer
 }
 
-func (p *Parser) Parse() ([]ChipDefinition, error) {
+func (p *Parser) Parse() ([]Statement, error) {
 	tok, err := p.lexer.peek()
 	if err != nil {
 		return nil, err
 	}
-	chips := make([]ChipDefinition, 0)
+	stmts := make([]Statement, 0)
 	for tok.variant != eof {
 		ch, err := p.parse()
 		if err != nil {
 			return nil, err
 		}
-		chips = append(chips, ch)
+		stmts = append(stmts, ch)
 		tok, err = p.lexer.peek()
 		if err != nil {
 			return nil, err
 		}
 	}
-	return chips, nil
+	return stmts, nil
 }
 
-func (p *Parser) parse() (ChipDefinition, error) {
-	if _, err := p.expect(chip); err != nil {
-		return ChipDefinition{}, err
+func (p *Parser) parse() (Statement, error) {
+	tok, err := p.lexer.next()
+	if err != nil {
+		return nil, err
 	}
+	switch tok.variant {
+	case chip:
+		return p.parseChipStatement()
+	case use:
+		filename, err := p.expect(stringLiteral)
+		if err != nil {
+			return nil, err
+		}
+		return UseStatement{FileName: filename.literal}, nil
+	default:
+		return nil, fmt.Errorf("unexpected token '%s'", tok.literal)
+	}
+}
+
+func (p *Parser) parseChipStatement() (ChipStatement, error) {
 	name, err := p.expect(identifier)
 	if err != nil {
-		return ChipDefinition{}, err
+		return ChipStatement{}, err
 	}
 	inputs, err := p.parseInputDefinition()
 	if err != nil {
-		return ChipDefinition{}, err
+		return ChipStatement{}, err
 	}
 	if _, err := p.expect(arrow); err != nil {
-		return ChipDefinition{}, err
+		return ChipStatement{}, err
 	}
 	outputs, err := p.parseOutputDefinition()
 	if err != nil {
-		return ChipDefinition{}, err
+		return ChipStatement{}, err
 	}
 	body, err := p.parseStatementBlock()
 	if err != nil {
-		return ChipDefinition{}, err
+		return ChipStatement{}, err
 	}
-	return ChipDefinition{
+	return ChipStatement{
 		Name:    name.literal,
 		Inputs:  inputs,
 		Outputs: outputs,
@@ -314,14 +360,14 @@ func (p *Parser) expect(v variant) (token, error) {
 	return tok, nil
 }
 
-type ChipDefinition struct {
+type ChipStatement struct {
 	Name    string
 	Inputs  map[string]byte
 	Outputs []byte
 	Body    []Statement
 }
 
-func (c ChipDefinition) Literal() string {
+func (c ChipStatement) Literal() string {
 	inputs := make([]string, 0, len(c.Inputs))
 	for name, length := range c.Inputs {
 		inputs = append(inputs, fmt.Sprintf("%s: %d", name, length))
@@ -358,6 +404,14 @@ type SetStatement struct {
 
 func (s SetStatement) Literal() string {
 	return fmt.Sprintf("set %s = %s", strings.Join(s.Identifiers, ", "), s.Expression.Literal())
+}
+
+type UseStatement struct {
+	FileName string
+}
+
+func (u UseStatement) Literal() string {
+	return fmt.Sprintf("use \"%s\"", u.FileName)
 }
 
 type CallExpression struct {

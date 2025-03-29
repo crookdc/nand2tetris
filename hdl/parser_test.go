@@ -9,12 +9,12 @@ import (
 func TestChipParser_ParseChip(t *testing.T) {
 	tests := []struct {
 		src  string
-		chip ChipDefinition
+		chip ChipStatement
 		err  error
 	}{
 		{
 			src: `chip and (a: 1, b: 1) -> (1) {}`,
-			chip: ChipDefinition{
+			chip: ChipStatement{
 				Name: "and",
 				Inputs: map[string]byte{
 					"a": 1,
@@ -29,7 +29,7 @@ func TestChipParser_ParseChip(t *testing.T) {
 		},
 		{
 			src: `chip mux (s: 2, n: 16) -> (16, 16, 16, 16) {}`,
-			chip: ChipDefinition{
+			chip: ChipStatement{
 				Name: "mux",
 				Inputs: map[string]byte{
 					"s": 2,
@@ -47,7 +47,7 @@ func TestChipParser_ParseChip(t *testing.T) {
 		},
 		{
 			src: `chip not16 (n: 16) -> (16) {}`,
-			chip: ChipDefinition{
+			chip: ChipStatement{
 				Name: "not16",
 				Inputs: map[string]byte{
 					"n": 16,
@@ -65,7 +65,7 @@ func TestChipParser_ParseChip(t *testing.T) {
 				out n
 				out 1
 			}`,
-			chip: ChipDefinition{
+			chip: ChipStatement{
 				Name: "not16",
 				Inputs: map[string]byte{
 					"n": 16,
@@ -90,7 +90,7 @@ func TestChipParser_ParseChip(t *testing.T) {
 			chip and (a: 1, b: 1) -> (1) {
 				out nand(a: not(a: a.0), b: not(a: b.0))
 			}`,
-			chip: ChipDefinition{
+			chip: ChipStatement{
 				Name: "and",
 				Inputs: map[string]byte{
 					"a": 1,
@@ -128,7 +128,7 @@ func TestChipParser_ParseChip(t *testing.T) {
 			chip not (in: 1) -> (1) {
 				out nand(in: [in.0, 1])
 			}`,
-			chip: ChipDefinition{
+			chip: ChipStatement{
 				Name: "not",
 				Inputs: map[string]byte{
 					"in": 1,
@@ -163,7 +163,7 @@ func TestChipParser_ParseChip(t *testing.T) {
 				set a, b, c, d = dmux_4(s: [0, 0], in: in)
 				out a
 			}`,
-			chip: ChipDefinition{
+			chip: ChipStatement{
 				Name: "flerp",
 				Inputs: map[string]byte{
 					"in": 16,
@@ -198,7 +198,7 @@ func TestChipParser_ParseChip(t *testing.T) {
 				set regular = in
 				out regular
 			}`,
-			chip: ChipDefinition{
+			chip: ChipStatement{
 				Name: "test",
 				Inputs: map[string]byte{
 					"in": 1,
