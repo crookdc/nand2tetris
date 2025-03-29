@@ -1,6 +1,5 @@
 .idea
-bins/simulator
-bins/assembler
+bins
 *.cpu
 *.heap
 hack
