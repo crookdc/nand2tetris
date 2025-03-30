@@ -1,3 +1,5 @@
+use "bit.hdl"
+
 chip register (load: 1, in: 16) -> (16) {
     out [
         bit(load: load, in: in.0),
@@ -17,24 +19,4 @@ chip register (load: 1, in: 16) -> (16) {
         bit(load: load, in: in.14),
         bit(load: load, in: in.15)
     ]
-}
-
-chip program_counter (load: 1, inc: 1, rst: 1, in: 16) -> (16) {
-    set feedback = feedback()
-    out register(
-        load: 1,
-        in: mux_2(
-            s: rst,
-            a: mux_2(
-              s: load,
-              a: mux_2(
-                s: inc,
-                a: feedback,
-                b: inc_16(in: feedback)
-              ),
-              b: in
-            ),
-            b: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        )
-    )
 }
