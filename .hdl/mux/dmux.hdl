@@ -1,0 +1,17 @@
+use "../gates/and.hdl"
+use "../gates/not.hdl"
+
+chip dmux_2 (s: 1, in: 16) -> (16, 16) {
+    out and_16_to_1(a: in, b: not(in: s))
+    out and_16_to_1(a: in, b: s)
+}
+
+chip dmux_4 (s: 2, in: 16) -> (16, 16, 16, 16) {
+    set a, b = dmux_2(s: s.1, in: in)
+    out and_16_to_1(a: a, b: not(in: s.0))
+    out and_16_to_1(a: b, b: not(in: s.0))
+
+    set c, d = dmux_2(s: s.1, in: in)
+    out and_16_to_1(a: c, b: s.0)
+    out and_16_to_1(a: d, b: s.0)
+}
