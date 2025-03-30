@@ -1,9 +1,4 @@
-chip mux_2 (s: 1, a: 16, b: 16) -> (16) {
-    out or_16(
-        a: and_16_to_1(a: a, b: not(in: s)),
-        b: and_16_to_1(a: b, b: s)
-    )
-}
+
 
 chip dmux_2 (s: 1, in: 16) -> (16, 16) {
     out and_16_to_1(a: in, b: not(in: s))
