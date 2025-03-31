@@ -1,3 +1,10 @@
+use "../gates/and.hdl"
+use "../gates/xor.hdl"
+use "../gates/or.hdl"
+use "../gates/not.hdl"
+use "../adder/adder.hdl"
+use "../mux/mux.hdl"
+
 chip alu (x: 16, y: 16, zx: 1, nx: 1, zy: 1, ny: 1, f: 1, n: 1) -> (16, 1, 1) {
     set px = xor_16_to_1(
         a: and_16_to_1(
