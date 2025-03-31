@@ -59,10 +59,12 @@ func TestCPU_compute(t *testing.T) {
 			name:        "M;JGT",
 			instruction: 0b111_1110000_000_001,
 			before: state{
-				m: 15,
+				a: 15,
+				m: 10,
 			},
 			after: state{
-				m:  15,
+				a:  15,
+				m:  10,
 				pc: 15,
 			},
 		},
@@ -70,10 +72,12 @@ func TestCPU_compute(t *testing.T) {
 			name:        "D;JGT",
 			instruction: 0b111_0001100_000_001,
 			before: state{
-				d: 15,
+				a: 15,
+				d: 23,
 			},
 			after: state{
-				d:  15,
+				a:  15,
+				d:  23,
 				pc: 15,
 			},
 		},
