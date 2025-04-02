@@ -18,7 +18,7 @@ func TestHigh(t *testing.T) {
 		},
 		{
 			word:     0b1000_0000_0000_0000,
-			n:        16,
+			n:        15,
 			expected: true,
 		},
 	}
