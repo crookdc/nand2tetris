@@ -123,8 +123,11 @@ func (s *Screen) Clear() error {
 	return nil
 }
 
-func (s *Screen) Fill(points ...simulator.Point) error {
-	if err := s.renderer.SetDrawColor(255, 255, 255, 255); err != nil {
+func (s *Screen) Fill(color simulator.Color, points ...simulator.Point) error {
+	if len(points) == 0 {
+		return nil
+	}
+	if err := s.renderer.SetDrawColor(color.R, color.G, color.B, 255); err != nil {
 		return err
 	}
 	converted := make([]sdl.Point, len(points))
@@ -153,26 +156,20 @@ func NewKeyboard() *Keyboard {
 
 type Keyboard struct {
 	capitalize bool
+	current    uint16
 }
 
 func (k *Keyboard) Poll() uint16 {
-	var code uint16
 	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 		switch e := event.(type) {
 		case *sdl.KeyboardEvent:
-			if e.Keysym.Sym == sdl.K_LSHIFT || e.Keysym.Sym == sdl.K_RSHIFT {
-				k.capitalize = !k.capitalize
+			if e.State == sdl.RELEASED {
+				k.current = 0
+				continue
 			} else if c, ok := keymap[e.Keysym.Sym]; ok {
-				code = c
+				k.current = c
 			}
 		}
 	}
-	if k.capitalize && alphabetical(code) {
-		code -= 32
-	}
-	return code
-}
-
-func alphabetical(kc uint16) bool {
-	return kc >= keymap[sdl.K_a] && kc <= keymap[sdl.K_z]
+	return k.current
 }

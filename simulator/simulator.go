@@ -5,9 +5,9 @@ import (
 )
 
 var (
-	ScreenMemoryMapBegin     uint16 = 16384
-	ScreenMemoryMapLength    uint16 = 8192
-	KeyboardMemoryMapAddress        = 24576
+	ScreenMemoryMapBegin     uint16 = 16_384
+	ScreenMemoryMapLength    uint16 = 8_192
+	KeyboardMemoryMapAddress        = 24_576
 )
 
 func Must[T any](v T, err error) T {
@@ -22,9 +22,15 @@ type Point struct {
 	Y uint16
 }
 
+type Color struct {
+	R uint8
+	G uint8
+	B uint8
+}
+
 type Screen interface {
 	Clear() error
-	Fill(points ...Point) error
+	Fill(color Color, points ...Point) error
 	Present()
 }
 
@@ -61,17 +67,16 @@ type Simulator struct {
 }
 
 func (s *Simulator) Run() error {
-	screen := time.Tick(time.Second / 30)
+	external := time.Tick(time.Second / 33)
 	for {
 		select {
-		case _ = <-screen:
+		case _ = <-external:
 			if err := s.draw(); err != nil {
 				return err
 			}
-			screen = time.Tick(time.Second / 30)
+			s.ram[KeyboardMemoryMapAddress] = s.keyboard.Poll()
 		default:
 			s.tick()
-			s.ram[KeyboardMemoryMapAddress] = s.keyboard.Poll()
 		}
 	}
 }
@@ -85,28 +90,28 @@ func (s *Simulator) tick() {
 }
 
 func (s *Simulator) draw() error {
-	points := make([]Point, 0)
+	set := make([]Point, 0)
+	unset := make([]Point, 0)
 	for i := range ScreenMemoryMapLength {
 		pixels := s.ram[ScreenMemoryMapBegin+i]
 		y := i / 32
 		for j := range 16 {
-			if low(pixels, j) {
-				continue
-			}
 			x := ((i * 16) % 512) + uint16(j)
-			points = append(points, Point{
+			point := Point{
 				X: x,
 				Y: y,
-			})
+			}
+			if low(pixels, j) {
+				unset = append(unset, point)
+			} else {
+				set = append(set, point)
+			}
 		}
 	}
-	if err := s.screen.Clear(); err != nil {
+	if err := s.screen.Fill(Color{255, 255, 255}, set...); err != nil {
 		return err
 	}
-	if len(points) == 0 {
-		return nil
-	}
-	if err := s.screen.Fill(points...); err != nil {
+	if err := s.screen.Fill(Color{0, 0, 0}, unset...); err != nil {
 		return err
 	}
 	s.screen.Present()
@@ -116,7 +121,7 @@ func (s *Simulator) draw() error {
 func high(word uint16, n int) bool {
 	m := uint16(1)
 	if n > 0 {
-		m = m << (n - 1)
+		m = m << n
 	}
 	return word&m != 0
 }

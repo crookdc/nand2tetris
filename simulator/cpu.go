@@ -1,7 +1,5 @@
 package simulator
 
-import "fmt"
-
 const (
 	DestinationMaskA = 0b100
 	DestinationMaskD = 0b010
@@ -115,7 +113,7 @@ func (c *cpu) address() uint16 {
 }
 
 func (c *cpu) execute(in uint16) bool {
-	if low(in, 16) {
+	if low(in, 15) {
 		// The instruction is an A-instruction if the 16th bit is low. If not then it's a C-instruction.
 		c.a = in
 		c.pc++
@@ -126,11 +124,7 @@ func (c *cpu) execute(in uint16) bool {
 
 func (c *cpu) compute(instruction uint16) (w bool) {
 	code := uint8((instruction >> 6) & 0b1111111)
-	fn, ok := alu[code]
-	if !ok {
-		panic(fmt.Errorf("no computation registered for code %.7b at instruction %d", code, c.pc))
-	}
-	computed := fn(c)
+	computed := alu[code](c)
 	destination := (instruction >> 3) & 0b111
 	if mask(destination, DestinationMaskA) {
 		c.a = computed

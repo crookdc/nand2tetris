@@ -92,6 +92,80 @@ func TestCPU_compute(t *testing.T) {
 				pc: 1,
 			},
 		},
+		{
+			name:        "D=-D",
+			instruction: 0b111_0001111_010_000,
+			before: state{
+				d: 76,
+			},
+			after: state{
+				d:  65460,
+				pc: 1,
+			},
+		},
+		{
+			name:        "A=-A",
+			instruction: 0b111_0110011_100_000,
+			before: state{
+				a: 76,
+			},
+			after: state{
+				a:  65460,
+				pc: 1,
+			},
+		},
+		{
+			name:        "M=-M",
+			instruction: 0b111_1110011_001_000,
+			before: state{
+				m: 76,
+			},
+			after: state{
+				m:  65460,
+				pc: 1,
+			},
+			write: true,
+		},
+		{
+			name:        "AM=!D",
+			instruction: 0b111_0001101_101_000,
+			before: state{
+				d: 0b1110_0000_1011_1110,
+			},
+			after: state{
+				a:  0b0001_1111_0100_0001,
+				d:  0b1110_0000_1011_1110,
+				m:  0b0001_1111_0100_0001,
+				pc: 1,
+			},
+			write: true,
+		},
+		{
+			name:        "D=A-D",
+			instruction: 0b111_0000111_010_000,
+			before: state{
+				a: 20,
+				d: 1,
+			},
+			after: state{
+				a:  20,
+				d:  19,
+				pc: 1,
+			},
+		},
+		{
+			name:        "@24576",
+			instruction: 0b0110_0000_0000_0000,
+			before: state{
+				a: 20,
+				d: 1,
+			},
+			after: state{
+				a:  24576,
+				d:  1,
+				pc: 1,
+			},
+		},
 	}
 
 	for _, test := range tests {
