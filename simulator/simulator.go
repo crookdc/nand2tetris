@@ -67,7 +67,7 @@ type Simulator struct {
 
 func (s *Simulator) Run() error {
 	external := time.Tick(time.Second / 33)
-	internal := time.Tick(time.Second / 300000)
+	internal := time.Tick(time.Second / 3000000)
 	for {
 		select {
 		case _ = <-external:
@@ -84,17 +84,18 @@ func (s *Simulator) Run() error {
 
 func (s *Simulator) tick() {
 	instruction := s.rom[s.cpu.pc]
-	s.cpu.m = s.ram[s.cpu.address()]
+	address := s.cpu.address()
+	s.cpu.m = s.ram[address]
 	if w := s.cpu.execute(instruction); w {
-		s.ram[s.cpu.address()] = s.cpu.m
+		s.ram[address] = s.cpu.m
 	}
 }
 
 func (s *Simulator) draw() error {
-	white := make([]Point, 0)
-	black := make([]Point, 0)
-	for x := range 512 {
-		for y := range 256 {
+	black, white := make([]Point, 0), make([]Point, 0)
+
+	for y := range 256 {
+		for x := range 512 {
 			point := Point{
 				X: uint16(x),
 				Y: uint16(y),
