@@ -33,6 +33,94 @@ func TestCPU_compute(t *testing.T) {
 			write: true,
 		},
 		{
+			name:        "M=0",
+			instruction: 0b111_0101010_001_000,
+			before: state{
+				m: 1235,
+			},
+			after: state{
+				m:  0,
+				pc: 1,
+			},
+			write: true,
+		},
+		{
+			name:        "DM=0",
+			instruction: 0b111_0101010_011_000,
+			before: state{
+				m: 1235,
+				d: 123,
+			},
+			after: state{
+				m:  0,
+				d:  0,
+				pc: 1,
+			},
+			write: true,
+		},
+		{
+			name:        "A=0",
+			instruction: 0b111_0101010_100_000,
+			before: state{
+				a: 2235,
+				m: 1235,
+				d: 123,
+			},
+			after: state{
+				a:  0,
+				m:  1235,
+				d:  123,
+				pc: 1,
+			},
+		},
+		{
+			name:        "AM=0",
+			instruction: 0b111_0101010_101_000,
+			before: state{
+				a: 2235,
+				m: 1235,
+				d: 123,
+			},
+			after: state{
+				a:  0,
+				m:  0,
+				d:  123,
+				pc: 1,
+			},
+			write: true,
+		},
+		{
+			name:        "AD=0",
+			instruction: 0b111_0101010_110_000,
+			before: state{
+				a: 2235,
+				m: 1235,
+				d: 123,
+			},
+			after: state{
+				a:  0,
+				m:  1235,
+				d:  0,
+				pc: 1,
+			},
+		},
+		{
+			name:        "ADM=0",
+			instruction: 0b111_0101010_111_000,
+			before: state{
+				a: 2235,
+				m: 1235,
+				d: 123,
+			},
+			after: state{
+				a:  0,
+				m:  0,
+				d:  0,
+				pc: 1,
+			},
+			write: true,
+		},
+		{
 			name:        "D=A+1",
 			instruction: 0b111_0110111_010_000,
 			before: state{
@@ -53,19 +141,6 @@ func TestCPU_compute(t *testing.T) {
 			after: state{
 				a:  16384,
 				pc: 1,
-			},
-		},
-		{
-			name:        "M;JGT",
-			instruction: 0b111_1110000_000_001,
-			before: state{
-				a: 15,
-				m: 10,
-			},
-			after: state{
-				a:  15,
-				m:  10,
-				pc: 15,
 			},
 		},
 		{
@@ -90,6 +165,111 @@ func TestCPU_compute(t *testing.T) {
 			after: state{
 				d:  0,
 				pc: 1,
+			},
+		},
+		{
+			name:        "D;JEQ",
+			instruction: 0b111_0001100_000_010,
+			before: state{
+				a: 15,
+				d: 23,
+			},
+			after: state{
+				a:  15,
+				d:  23,
+				pc: 1,
+			},
+		},
+		{
+			name:        "D;JEQ",
+			instruction: 0b111_0001100_000_010,
+			before: state{
+				a: 15,
+				d: 0,
+			},
+			after: state{
+				a:  15,
+				d:  0,
+				pc: 15,
+			},
+		},
+		{
+			name:        "D;JGE",
+			instruction: 0b111_0001100_000_011,
+			before: state{
+				a: 15,
+				d: 23,
+			},
+			after: state{
+				a:  15,
+				d:  23,
+				pc: 15,
+			},
+		},
+		{
+			name:        "D;JGE",
+			instruction: 0b111_0001100_000_011,
+			before: state{
+				a: 15,
+				d: 0,
+			},
+			after: state{
+				a:  15,
+				d:  0,
+				pc: 15,
+			},
+		},
+		{
+			name:        "D;JGE",
+			instruction: 0b111_0001100_000_011,
+			before: state{
+				a: 15,
+				d: 65460,
+			},
+			after: state{
+				a:  15,
+				d:  65460,
+				pc: 1,
+			},
+		},
+
+		{
+			name:        "D;JLT",
+			instruction: 0b111_0001100_000_100,
+			before: state{
+				a: 15,
+				d: 23,
+			},
+			after: state{
+				a:  15,
+				d:  23,
+				pc: 1,
+			},
+		},
+		{
+			name:        "D;JLT",
+			instruction: 0b111_0001100_000_100,
+			before: state{
+				a: 15,
+				d: 0,
+			},
+			after: state{
+				a:  15,
+				d:  0,
+				pc: 1,
+			},
+		},
+		{
+			name:        "D;JLT",
+			instruction: 0b111_0001100_000_100,
+			before: state{
+				a: 15,
+				d: 65460,
+			},
+			after: state{
+				a:  15,
+				d:  65460,
+				pc: 15,
 			},
 		},
 		{
@@ -122,6 +302,18 @@ func TestCPU_compute(t *testing.T) {
 			},
 			after: state{
 				m:  65460,
+				pc: 1,
+			},
+			write: true,
+		},
+		{
+			name:        "M=-M",
+			instruction: 0b111_1110011_001_000,
+			before: state{
+				m: 65460,
+			},
+			after: state{
+				m:  76,
 				pc: 1,
 			},
 			write: true,

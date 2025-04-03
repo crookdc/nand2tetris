@@ -43,13 +43,13 @@ var alu = map[uint8]func(*cpu) uint16{
 		return ^c.m
 	},
 	0b0001111: func(c *cpu) uint16 {
-		return uint16(int16(c.d) * -1)
+		return uint16(int(c.d) * -1)
 	},
 	0b0110011: func(c *cpu) uint16 {
-		return uint16(int16(c.a) * -1)
+		return uint16(int(c.a) * -1)
 	},
 	0b1110011: func(c *cpu) uint16 {
-		return uint16(int16(c.m) * -1)
+		return uint16(int(c.m) * -1)
 	},
 	0b0011111: func(c *cpu) uint16 {
 		return c.d + 1
@@ -109,12 +109,12 @@ type cpu struct {
 }
 
 func (c *cpu) address() uint16 {
-	return c.a & 0b0111_1111_1111_1111
+	return c.a
 }
 
 func (c *cpu) execute(in uint16) bool {
 	if low(in, 15) {
-		// The instruction is an A-instruction if the 16th bit is low. If not then it's a C-instruction.
+		// The instruction is an A-instruction if the MSB is low.
 		c.a = in
 		c.pc++
 		return false
@@ -139,17 +139,17 @@ func (c *cpu) compute(instruction uint16) (w bool) {
 	jump := false
 	switch instruction & 0b111 {
 	case jgt:
-		jump = int(computed) > 0
+		jump = computed != 0 && low(computed, 15)
 	case jeq:
-		jump = int(computed) == 0
+		jump = computed == 0
 	case jge:
-		jump = int(computed) >= 0
+		jump = low(computed, 15)
 	case jlt:
-		jump = int(computed) < 0
+		jump = high(computed, 15)
 	case jne:
-		jump = int(computed) != 0
+		jump = computed != 0
 	case jle:
-		jump = int(computed) <= 0
+		jump = computed == 0 || high(computed, 15)
 	case jmp:
 		jump = true
 	}

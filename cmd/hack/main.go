@@ -49,10 +49,14 @@ func parseProgram(filename string) ([]uint16, error) {
 		text := scn.Text()
 		var instruction uint16
 		for i := range 16 {
-			if text[i] == '0' {
-				continue
+			switch text[i] {
+			case '0':
+				instruction = instruction | uint16(0<<(15-i))
+			case '1':
+				instruction = instruction | uint16(1<<(15-i))
+			default:
+				panic("unexpected character in instruction " + text)
 			}
-			instruction = instruction | uint16(1<<(15-i))
 		}
 		program = append(program, instruction)
 	}

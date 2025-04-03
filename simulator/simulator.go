@@ -6,7 +6,6 @@ import (
 
 var (
 	ScreenMemoryMapBegin     uint16 = 16_384
-	ScreenMemoryMapLength    uint16 = 8_192
 	KeyboardMemoryMapAddress        = 24_576
 )
 
@@ -68,6 +67,7 @@ type Simulator struct {
 
 func (s *Simulator) Run() error {
 	external := time.Tick(time.Second / 33)
+	internal := time.Tick(time.Second / 300000)
 	for {
 		select {
 		case _ = <-external:
@@ -75,8 +75,9 @@ func (s *Simulator) Run() error {
 				return err
 			}
 			s.ram[KeyboardMemoryMapAddress] = s.keyboard.Poll()
-		default:
+		case _ = <-internal:
 			s.tick()
+		default:
 		}
 	}
 }
@@ -90,28 +91,25 @@ func (s *Simulator) tick() {
 }
 
 func (s *Simulator) draw() error {
-	set := make([]Point, 0)
-	unset := make([]Point, 0)
-	for i := range ScreenMemoryMapLength {
-		pixels := s.ram[ScreenMemoryMapBegin+i]
-		y := i / 32
-		for j := range 16 {
-			x := ((i * 16) % 512) + uint16(j)
+	white := make([]Point, 0)
+	black := make([]Point, 0)
+	for x := range 512 {
+		for y := range 256 {
 			point := Point{
-				X: x,
-				Y: y,
+				X: uint16(x),
+				Y: uint16(y),
 			}
-			if low(pixels, j) {
-				unset = append(unset, point)
+			if low(s.ram[int(ScreenMemoryMapBegin)+y*32+x/16], x%16) {
+				black = append(black, point)
 			} else {
-				set = append(set, point)
+				white = append(white, point)
 			}
 		}
 	}
-	if err := s.screen.Fill(Color{255, 255, 255}, set...); err != nil {
+	if err := s.screen.Fill(Color{255, 255, 255}, white...); err != nil {
 		return err
 	}
-	if err := s.screen.Fill(Color{0, 0, 0}, unset...); err != nil {
+	if err := s.screen.Fill(Color{0, 0, 0}, black...); err != nil {
 		return err
 	}
 	s.screen.Present()
