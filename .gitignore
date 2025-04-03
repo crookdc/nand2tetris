@@ -2,3 +2,4 @@
 bins
 *.cpu
 *.heap
+.DS_Store
