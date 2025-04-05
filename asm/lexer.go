@@ -18,6 +18,7 @@ var (
 		'(':  lparen,
 		')':  rparen,
 		'=':  equals,
+		'!':  bang,
 	}
 	keywords = map[string]variant{
 		"JGT": jgt,
@@ -38,6 +39,7 @@ const (
 	and
 	or
 	equals
+	bang
 	identifier
 	integer
 	lparen

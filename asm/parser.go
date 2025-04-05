@@ -125,7 +125,7 @@ func (p *parser) c() (comp compute, err error) {
 			return compute{}, err
 		}
 	}
-	for tok.variant != semicolon && tok.variant != linefeed {
+	for tok.variant != semicolon && tok.variant != linefeed && tok.variant != eof {
 		comp.comp += tok.literal
 		tok, err = p.lexer.next()
 		if err != nil {

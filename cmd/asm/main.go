@@ -8,7 +8,9 @@ import (
 	"os"
 )
 
-var source = flag.String("source", "", "a file containing Hack assembly code")
+var (
+	source = flag.String("source", "", "a file containing Hack assembly code")
+)
 
 func main() {
 	flag.Parse()

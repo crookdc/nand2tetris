@@ -112,6 +112,65 @@ func TestLexer_next(t *testing.T) {
 			},
 		},
 		{
+			src: "M=-1",
+			tokens: []token{
+				{
+					variant: identifier,
+					literal: "M",
+				},
+				{
+					variant: equals,
+					literal: "=",
+				},
+				{
+					variant: minus,
+					literal: "-",
+				},
+				{
+					variant: integer,
+					literal: "1",
+				},
+			},
+		},
+		{
+			src: "M=!M",
+			tokens: []token{
+				{
+					variant: identifier,
+					literal: "M",
+				},
+				{
+					variant: equals,
+					literal: "=",
+				},
+				{
+					variant: bang,
+					literal: "!",
+				},
+				{
+					variant: identifier,
+					literal: "M",
+				},
+			},
+		},
+		{
+			src: "M=D",
+			tokens: []token{
+				{
+					variant: identifier,
+					literal: "M",
+				},
+				{
+					variant: equals,
+					literal: "=",
+				},
+				{
+					variant: identifier,
+					literal: "D",
+				},
+			},
+		},
+		{
 			src: "@10\nD=A+1\nM=D\nD;JNE",
 			tokens: []token{
 				{

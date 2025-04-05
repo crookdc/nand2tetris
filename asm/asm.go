@@ -90,7 +90,7 @@ func Assemble(src string) ([][16]byte, error) {
 func wrap(n int) [16]byte {
 	var r [16]byte
 	for i := range 16 {
-		r[i] = byte(n>>16-i) & 1
+		r[i] = byte(n>>(15-i)) & 1
 	}
 	return r
 }
