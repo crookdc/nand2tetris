@@ -58,4 +58,6 @@ chip or (in: 2) -> (1) {
 }
 ```
 
-It's that simple, just provide a relative path to the file you wish to use after the `use` keyword. 
+It's that simple, just provide a relative path to the file you wish to use after the `use` keyword. You might have 
+noticed that `nand` is used within the chip body but not imported anywhere. That is totally valid since the `nand` and 
+`dff` gates are builtin chips that can be used without any imports.
