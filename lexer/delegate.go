@@ -51,6 +51,7 @@ func String[T any](variant T) Func[T] {
 		if c != '"' {
 			return Token[T]{}, false, nil
 		}
+		l.cursor++
 		literal := l.literal(func(c uint8) bool {
 			return c != '"'
 		})

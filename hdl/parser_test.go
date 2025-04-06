@@ -6,15 +6,15 @@ import (
 	"testing"
 )
 
-func TestChipParser_ParseChip(t *testing.T) {
+func TestParser_Parse(t *testing.T) {
 	tests := []struct {
 		src  string
-		chip ChipStatement
+		stmt Statement
 		err  error
 	}{
 		{
 			src: `chip and (a: 1, b: 1) -> (1) {}`,
-			chip: ChipStatement{
+			stmt: ChipStatement{
 				Name: "and",
 				Inputs: map[string]byte{
 					"a": 1,
@@ -29,7 +29,7 @@ func TestChipParser_ParseChip(t *testing.T) {
 		},
 		{
 			src: `chip mux (s: 2, n: 16) -> (16, 16, 16, 16) {}`,
-			chip: ChipStatement{
+			stmt: ChipStatement{
 				Name: "mux",
 				Inputs: map[string]byte{
 					"s": 2,
@@ -46,8 +46,15 @@ func TestChipParser_ParseChip(t *testing.T) {
 			err: nil,
 		},
 		{
+			src: `use "../mux/mux.hdl"`,
+			stmt: UseStatement{
+				FileName: "../mux/mux.hdl",
+			},
+			err: nil,
+		},
+		{
 			src: `chip not16 (n: 16) -> (16) {}`,
-			chip: ChipStatement{
+			stmt: ChipStatement{
 				Name: "not16",
 				Inputs: map[string]byte{
 					"n": 16,
@@ -61,11 +68,11 @@ func TestChipParser_ParseChip(t *testing.T) {
 		},
 		{
 			src: `
-			chip not16 (n: 16) -> (1, 1) {
+			stmt not16 (n: 16) -> (1, 1) {
 				out n
 				out 1
 			}`,
-			chip: ChipStatement{
+			stmt: ChipStatement{
 				Name: "not16",
 				Inputs: map[string]byte{
 					"n": 16,
@@ -87,10 +94,10 @@ func TestChipParser_ParseChip(t *testing.T) {
 		},
 		{
 			src: `
-			chip and (a: 1, b: 1) -> (1) {
+			stmt and (a: 1, b: 1) -> (1) {
 				out nand(a: not(a: a.0), b: not(a: b.0))
 			}`,
-			chip: ChipStatement{
+			stmt: ChipStatement{
 				Name: "and",
 				Inputs: map[string]byte{
 					"a": 1,
@@ -125,10 +132,10 @@ func TestChipParser_ParseChip(t *testing.T) {
 		},
 		{
 			src: `
-			chip not (in: 1) -> (1) {
+			stmt not (in: 1) -> (1) {
 				out nand(in: [in.0, 1])
 			}`,
-			chip: ChipStatement{
+			stmt: ChipStatement{
 				Name: "not",
 				Inputs: map[string]byte{
 					"in": 1,
@@ -159,11 +166,11 @@ func TestChipParser_ParseChip(t *testing.T) {
 		},
 		{
 			src: `
-			chip flerp (in: 16) -> (16) {
+			stmt flerp (in: 16) -> (16) {
 				set a, b, c, d = dmux_4(s: [0, 0], in: in)
 				out a
 			}`,
-			chip: ChipStatement{
+			stmt: ChipStatement{
 				Name: "flerp",
 				Inputs: map[string]byte{
 					"in": 16,
@@ -194,11 +201,11 @@ func TestChipParser_ParseChip(t *testing.T) {
 		},
 		{
 			src: `
-			chip test (in: 1) -> (1, 1) {
+			stmt test (in: 1) -> (1, 1) {
 				set regular = in
 				out regular
 			}`,
-			chip: ChipStatement{
+			stmt: ChipStatement{
 				Name: "test",
 				Inputs: map[string]byte{
 					"in": 1,
@@ -222,15 +229,13 @@ func TestChipParser_ParseChip(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.src, func(t *testing.T) {
-			lex := NewLexer()
-			lex.Load(test.src)
-			parser := Parser{lexer: lex}
+			parser := Parser{lexer: LoadedLexer(test.src)}
 			ch, err := parser.Parse()
 			if !errors.Is(err, test.err) {
 				t.Errorf("expected err to be %v but got %v", test.err, err)
 			}
-			if !reflect.DeepEqual(ch[0], test.chip) {
-				t.Errorf("expected chip to equal %v but got %v", test.chip, ch[0])
+			if !reflect.DeepEqual(ch[0], test.stmt) {
+				t.Errorf("expected stmt to equal %v but got %v", test.stmt, ch[0])
 			}
 		})
 	}
