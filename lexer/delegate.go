@@ -1,5 +1,8 @@
 package lexer
 
+// LineComment produces a Func delegate that can be used to process line comments. A line comment is defined as a
+// comment that starts with the character sequence provided in start and that stretches until the next linefeed
+// character.
 func LineComment[T any](variant T, start string) Func[T] {
 	return func(l *Lexer[T], c uint8) (Token[T], bool, error) {
 		previous := l.cursor
@@ -79,6 +82,7 @@ func Any(fns ...ConditionFunc) ConditionFunc {
 	}
 }
 
+// All products a composite ConditionFunc that returns true only when all the underlying ConditionFunc's do.
 func All(fns ...ConditionFunc) ConditionFunc {
 	return func(c uint8) bool {
 		for _, fn := range fns {
@@ -90,12 +94,14 @@ func All(fns ...ConditionFunc) ConditionFunc {
 	}
 }
 
+// Equals produces a ConditionFunc that returns true whenever c is equal to target and false otherwise.
 func Equals(target uint8) ConditionFunc {
 	return func(c uint8) bool {
 		return c == target
 	}
 }
 
+// Not produces a ConditionFunc that will always return the opposite of the result returned by fn.
 func Not(fn ConditionFunc) ConditionFunc {
 	return func(c uint8) bool {
 		return !fn(c)
