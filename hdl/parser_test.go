@@ -68,7 +68,7 @@ func TestParser_Parse(t *testing.T) {
 		},
 		{
 			src: `
-			stmt not16 (n: 16) -> (1, 1) {
+			chip not16 (n: 16) -> (1, 1) {
 				out n
 				out 1
 			}`,
@@ -94,7 +94,7 @@ func TestParser_Parse(t *testing.T) {
 		},
 		{
 			src: `
-			stmt and (a: 1, b: 1) -> (1) {
+			chip and (a: 1, b: 1) -> (1) {
 				out nand(a: not(a: a.0), b: not(a: b.0))
 			}`,
 			stmt: ChipStatement{
@@ -132,7 +132,7 @@ func TestParser_Parse(t *testing.T) {
 		},
 		{
 			src: `
-			stmt not (in: 1) -> (1) {
+			chip not (in: 1) -> (1) {
 				out nand(in: [in.0, 1])
 			}`,
 			stmt: ChipStatement{
@@ -166,7 +166,7 @@ func TestParser_Parse(t *testing.T) {
 		},
 		{
 			src: `
-			stmt flerp (in: 16) -> (16) {
+			chip flerp (in: 16) -> (16) {
 				set a, b, c, d = dmux_4(s: [0, 0], in: in)
 				out a
 			}`,
@@ -201,7 +201,7 @@ func TestParser_Parse(t *testing.T) {
 		},
 		{
 			src: `
-			stmt test (in: 1) -> (1, 1) {
+			chip test (in: 1) -> (1, 1) {
 				set regular = in
 				out regular
 			}`,
