@@ -222,7 +222,9 @@ func TestChipParser_ParseChip(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.src, func(t *testing.T) {
-			parser := Parser{lexer: Lexer{Source: test.src}}
+			lex := NewLexer()
+			lex.Load(test.src)
+			parser := Parser{lexer: lex}
 			ch, err := parser.Parse()
 			if !errors.Is(err, test.err) {
 				t.Errorf("expected err to be %v but got %v", test.err, err)

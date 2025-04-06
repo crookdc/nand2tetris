@@ -2,18 +2,90 @@ package hdl
 
 import (
 	"fmt"
+	"github.com/crookdc/nand2tetris/lexer"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 )
 
+var (
+	symbols = map[uint8]variant{
+		'(': leftParenthesis,
+		')': rightParenthesis,
+		'=': equals,
+		':': colon,
+		',': comma,
+		'{': leftCurlyBrace,
+		'}': rightCurlyBrace,
+		'[': leftBracket,
+		']': rightBracket,
+		'.': dot,
+	}
+	keywords = map[string]variant{
+		"chip": chip,
+		"set":  set,
+		"out":  out,
+		"use":  use,
+		"->":   arrow,
+	}
+)
+
+const (
+	chip variant = iota
+	out
+	set
+	use
+	dot
+	identifier
+	integer
+	leftParenthesis
+	rightParenthesis
+	colon
+	comma
+	arrow
+	leftCurlyBrace
+	rightCurlyBrace
+	leftBracket
+	rightBracket
+	equals
+	str
+)
+
+type variant int
+
+func NewLexer() *lexer.Lexer[variant] {
+	return lexer.NewLexer[variant](
+		lexer.Params[variant]{
+			Symbols: symbols,
+			Ignore:  lexer.Any(lexer.Whitespace, lexer.Equals('\n')),
+		},
+		lexer.String[variant](str),
+		lexer.Integer[variant](integer),
+		lexer.Keywords[variant](keywords, lexer.Any(
+			lexer.Alphabetical,
+			lexer.Equals('-'),
+			lexer.Equals('>'),
+		)),
+		lexer.Condition[variant](identifier, lexer.Any(
+			lexer.Alphanumeric,
+			lexer.Equals('_'),
+		)),
+	)
+}
+
+func LoadedLexer(src string) *lexer.Lexer[variant] {
+	l := NewLexer()
+	l.Load(src)
+	return l
+}
+
 func ParseFile(filename string) (map[string]ChipStatement, error) {
 	src, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
-	p := NewParser(Lexer{Source: string(src)})
+	p := NewParser(LoadedLexer(string(src)))
 	c := make(map[string]ChipStatement)
 	stmts, err := p.Parse()
 	if err != nil {
@@ -44,29 +116,29 @@ type Expression interface {
 	Statement
 }
 
-func NewParser(lexer Lexer) Parser {
+func NewParser(lexer *lexer.Lexer[variant]) Parser {
 	return Parser{
 		lexer: lexer,
 	}
 }
 
 type Parser struct {
-	lexer Lexer
+	lexer *lexer.Lexer[variant]
 }
 
 func (p *Parser) Parse() ([]Statement, error) {
-	tok, err := p.lexer.peek()
+	tok, err := p.lexer.Peek()
 	if err != nil {
 		return nil, err
 	}
 	stmts := make([]Statement, 0)
-	for tok.variant != eof {
+	for !lexer.EOF(tok) {
 		ch, err := p.parse()
 		if err != nil {
 			return nil, err
 		}
 		stmts = append(stmts, ch)
-		tok, err = p.lexer.peek()
+		tok, err = p.lexer.Peek()
 		if err != nil {
 			return nil, err
 		}
@@ -75,21 +147,21 @@ func (p *Parser) Parse() ([]Statement, error) {
 }
 
 func (p *Parser) parse() (Statement, error) {
-	tok, err := p.lexer.next()
+	tok, err := p.lexer.Next()
 	if err != nil {
 		return nil, err
 	}
-	switch tok.variant {
+	switch tok.Variant {
 	case chip:
 		return p.parseChipStatement()
 	case use:
-		filename, err := p.expect(stringLiteral)
+		filename, err := p.expect(str)
 		if err != nil {
 			return nil, err
 		}
-		return UseStatement{FileName: filename.literal}, nil
+		return UseStatement{FileName: filename.Literal}, nil
 	default:
-		return nil, fmt.Errorf("unexpected token '%s'", tok.literal)
+		return nil, fmt.Errorf("unexpected token '%s'", tok.Literal)
 	}
 }
 
@@ -114,7 +186,7 @@ func (p *Parser) parseChipStatement() (ChipStatement, error) {
 		return ChipStatement{}, err
 	}
 	return ChipStatement{
-		Name:    name.literal,
+		Name:    name.Literal,
 		Inputs:  inputs,
 		Outputs: outputs,
 		Body:    body,
@@ -138,11 +210,11 @@ func (p *Parser) parseInputDefinition() (map[string]byte, error) {
 		if err != nil {
 			return err
 		}
-		parsedSize, err := strconv.Atoi(size.literal)
+		parsedSize, err := strconv.Atoi(size.Literal)
 		if err != nil {
 			return err
 		}
-		inputs[name.literal] = byte(parsedSize)
+		inputs[name.Literal] = byte(parsedSize)
 		return nil
 	}, rightParenthesis)
 	if err != nil {
@@ -161,7 +233,7 @@ func (p *Parser) parseOutputDefinition() ([]byte, error) {
 		if err != nil {
 			return err
 		}
-		parsedSize, err := strconv.Atoi(size.literal)
+		parsedSize, err := strconv.Atoi(size.Literal)
 		if err != nil {
 			return err
 		}
@@ -175,20 +247,20 @@ func (p *Parser) parseOutputDefinition() ([]byte, error) {
 }
 
 func (p *Parser) parseList(itemParser func() error, terminator variant) error {
-	tok, err := p.lexer.peek()
+	tok, err := p.lexer.Peek()
 	if err != nil {
 		return err
 	}
-	for tok.variant != terminator {
+	for tok.Variant != terminator {
 		if err := itemParser(); err != nil {
 			return err
 		}
-		tok, err = p.lexer.peek()
+		tok, err = p.lexer.Peek()
 		if err != nil {
 			return err
 		}
-		if tok.variant == comma {
-			tok, err = p.lexer.next()
+		if tok.Variant == comma {
+			tok, err = p.lexer.Next()
 			if err != nil {
 				return err
 			}
@@ -202,18 +274,18 @@ func (p *Parser) parseStatementBlock() ([]Statement, error) {
 	if _, err := p.expect(leftCurlyBrace); err != nil {
 		return nil, err
 	}
-	tok, err := p.lexer.peek()
+	tok, err := p.lexer.Peek()
 	if err != nil {
 		return nil, err
 	}
 	statements := make([]Statement, 0)
-	for tok.variant != rightCurlyBrace {
+	for tok.Variant != rightCurlyBrace {
 		statement, err := p.parseStatement()
 		if err != nil {
 			return nil, err
 		}
 		statements = append(statements, statement)
-		tok, err = p.lexer.peek()
+		tok, err = p.lexer.Peek()
 		if err != nil {
 			return nil, err
 		}
@@ -225,11 +297,11 @@ func (p *Parser) parseStatementBlock() ([]Statement, error) {
 }
 
 func (p *Parser) parseStatement() (Statement, error) {
-	tok, err := p.lexer.next()
+	tok, err := p.lexer.Next()
 	if err != nil {
 		return nil, err
 	}
-	switch tok.variant {
+	switch tok.Variant {
 	case out:
 		expr, err := p.parseExpression()
 		if err != nil {
@@ -237,90 +309,106 @@ func (p *Parser) parseStatement() (Statement, error) {
 		}
 		return OutStatement{Expression: expr}, nil
 	case set:
-		identifiers := make([]string, 0)
-		err := p.parseList(func() error {
-			i, err := p.expect(identifier)
-			if err != nil {
-				return err
-			}
-			identifiers = append(identifiers, i.literal)
-			return nil
-		}, equals)
-		if err != nil {
-			return nil, err
-		}
-		expr, err := p.parseExpression()
-		if err != nil {
-			return nil, err
-		}
-		return SetStatement{
-			Identifiers: identifiers,
-			Expression:  expr,
-		}, nil
+		return p.parseSetStatement()
 	default:
-		return nil, fmt.Errorf("unexpected token '%s'", tok.literal)
+		return nil, fmt.Errorf("unexpected token '%s'", tok.Literal)
 	}
+}
+
+func (p *Parser) parseSetStatement() (SetStatement, error) {
+	identifiers := make([]string, 0)
+	err := p.parseList(func() error {
+		i, err := p.expect(identifier)
+		if err != nil {
+			return err
+		}
+		identifiers = append(identifiers, i.Literal)
+		return nil
+	}, equals)
+	if err != nil {
+		return SetStatement{}, err
+	}
+	expr, err := p.parseExpression()
+	if err != nil {
+		return SetStatement{}, err
+	}
+	return SetStatement{
+		Identifiers: identifiers,
+		Expression:  expr,
+	}, nil
 }
 
 func (p *Parser) parseExpression() (Expression, error) {
-	tok, err := p.lexer.next()
+	tok, err := p.lexer.Next()
 	if err != nil {
 		return nil, err
 	}
-	switch tok.variant {
+	switch tok.Variant {
 	case integer:
-		parsed, err := strconv.Atoi(tok.literal)
-		if err != nil {
-			return nil, err
-		}
-		return IntegerExpression{
-			Integer: parsed,
-		}, nil
+		return p.parseIntegerExpression(tok)
 	case identifier:
-		next, err := p.lexer.peek()
-		if err != nil {
-			return nil, err
-		}
-		if next.variant == dot {
-			return p.parseIndexedExpression(tok)
-		}
-		if next.variant == leftParenthesis {
-			return p.parseCallExpression(tok)
-		}
-		return IdentifierExpression{Identifier: tok.literal}, nil
+		return p.parseIdentifierExpression(tok)
 	case leftBracket:
-		values := make([]Expression, 0)
-		err := p.parseList(func() error {
-			value, err := p.parseExpression()
-			if err != nil {
-				return err
-			}
-			values = append(values, value)
-			return nil
-		}, rightBracket)
-		if err != nil {
-			return nil, err
-		}
-		return ArrayExpression{Values: values}, nil
+		return p.parseArrayExpression()
 	default:
-		return nil, fmt.Errorf("unexpected token '%s'", tok.literal)
+		return nil, fmt.Errorf("unexpected token '%s'", tok.Literal)
 	}
 }
 
-func (p *Parser) parseIndexedExpression(ident token) (IndexedExpression, error) {
+func (p *Parser) parseIdentifierExpression(tok lexer.Token[variant]) (Expression, error) {
+	next, err := p.lexer.Peek()
+	if err != nil {
+		return nil, err
+	}
+	if next.Variant == dot {
+		return p.parseIndexedExpression(tok)
+	}
+	if next.Variant == leftParenthesis {
+		return p.parseCallExpression(tok)
+	}
+	return IdentifierExpression{Identifier: tok.Literal}, nil
+}
+
+func (p *Parser) parseArrayExpression() (ArrayExpression, error) {
+	values := make([]Expression, 0)
+	err := p.parseList(func() error {
+		value, err := p.parseExpression()
+		if err != nil {
+			return err
+		}
+		values = append(values, value)
+		return nil
+	}, rightBracket)
+	if err != nil {
+		return ArrayExpression{}, err
+	}
+	return ArrayExpression{Values: values}, nil
+}
+
+func (p *Parser) parseIntegerExpression(tok lexer.Token[variant]) (IntegerExpression, error) {
+	parsed, err := strconv.Atoi(tok.Literal)
+	if err != nil {
+		return IntegerExpression{}, err
+	}
+	return IntegerExpression{
+		Integer: parsed,
+	}, nil
+}
+
+func (p *Parser) parseIndexedExpression(ident lexer.Token[variant]) (IndexedExpression, error) {
 	_, _ = p.expect(dot)
 	idx, err := p.expect(integer)
 	if err != nil {
 		return IndexedExpression{}, err
 	}
-	parsed, err := strconv.Atoi(idx.literal)
+	parsed, err := strconv.Atoi(idx.Literal)
 	if err != nil {
 		return IndexedExpression{}, err
 	}
-	return IndexedExpression{Index: parsed, Identifier: ident.literal}, nil
+	return IndexedExpression{Index: parsed, Identifier: ident.Literal}, nil
 }
 
-func (p *Parser) parseCallExpression(ident token) (CallExpression, error) {
+func (p *Parser) parseCallExpression(ident lexer.Token[variant]) (CallExpression, error) {
 	args := make(map[string]Expression)
 	if _, err := p.expect(leftParenthesis); err != nil {
 		return CallExpression{}, err
@@ -337,25 +425,25 @@ func (p *Parser) parseCallExpression(ident token) (CallExpression, error) {
 		if err != nil {
 			return err
 		}
-		args[name.literal] = expr
+		args[name.Literal] = expr
 		return nil
 	}, rightParenthesis)
 	if err != nil {
 		return CallExpression{}, err
 	}
 	return CallExpression{
-		Name: ident.literal,
+		Name: ident.Literal,
 		Args: args,
 	}, nil
 }
 
-func (p *Parser) expect(v variant) (token, error) {
-	tok, err := p.lexer.next()
+func (p *Parser) expect(v variant) (lexer.Token[variant], error) {
+	tok, err := p.lexer.Next()
 	if err != nil {
-		return token{}, err
+		return lexer.Token[variant]{}, err
 	}
-	if tok.variant != v {
-		return token{}, fmt.Errorf("unexpected token '%s'", tok.literal)
+	if tok.Variant != v {
+		return lexer.Token[variant]{}, fmt.Errorf("unexpected token '%s'", tok.Literal)
 	}
 	return tok, nil
 }

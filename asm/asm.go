@@ -58,11 +58,9 @@ func Assemble(src string) ([][16]byte, error) {
 		return nil, err
 	}
 	var program [][16]byte
-	ps := parser{
-		lexer: lexer{
-			src: src,
-		},
-	}
+	lex := NewLexer()
+	lex.Load(src)
+	ps := parser{lexer: lex}
 	for ps.more() {
 		ins, err := ps.next()
 		if err != nil {
@@ -98,10 +96,10 @@ func wrap(n int) [16]byte {
 func assembleLoadInstruction(mem map[string]int, v load) ([16]byte, error) {
 	var bin int
 	var err error
-	if v.value.variant == integer {
-		bin, err = strconv.Atoi(v.value.literal)
-	} else if v.value.variant == identifier {
-		bin = mem[v.value.literal]
+	if v.value.Variant == integer {
+		bin, err = strconv.Atoi(v.value.Literal)
+	} else if v.value.Variant == identifier {
+		bin = mem[v.value.Literal]
 	} else {
 		return [16]byte{}, fmt.Errorf("unexpected load token %+v", v.value)
 	}
@@ -120,8 +118,8 @@ func assembleComputeInstruction(v compute) ([16]byte, error) {
 	bin = bin << 6
 	if v.dest != nil {
 		dest := 0
-		for i := range v.dest.literal {
-			d, ok := destinations[v.dest.literal[i]]
+		for i := range v.dest.Literal {
+			d, ok := destinations[v.dest.Literal[i]]
 			if !ok {
 				return [16]byte{}, fmt.Errorf("invalid destination %+v", v.dest)
 			}
@@ -130,7 +128,7 @@ func assembleComputeInstruction(v compute) ([16]byte, error) {
 		bin = bin | (dest << 3)
 	}
 	if v.jump != nil {
-		jump, ok := jumps[v.jump.literal]
+		jump, ok := jumps[v.jump.Literal]
 		if !ok {
 			return [16]byte{}, fmt.Errorf("invalid jump %+v", v.jump)
 		}
@@ -167,9 +165,7 @@ func buildMemoryMap(src string) (map[string]int, error) {
 		"KBD":    24_576,
 	}
 	ps := parser{
-		lexer: lexer{
-			src: src,
-		},
+		lexer: LoadedLexer(src),
 	}
 	for line := 0; ps.more(); line++ {
 		ins, err := ps.next()
@@ -178,17 +174,15 @@ func buildMemoryMap(src string) (map[string]int, error) {
 		}
 		switch v := ins.(type) {
 		case label:
-			if _, ok := mem[v.value.literal]; !ok {
-				mem[v.value.literal] = line
+			if _, ok := mem[v.value.Literal]; !ok {
+				mem[v.value.Literal] = line
 			}
 			line--
 		default:
 		}
 	}
 	ps = parser{
-		lexer: lexer{
-			src: src,
-		},
+		lexer: LoadedLexer(src),
 	}
 	cursor := 16
 	for ps.more() {
@@ -198,12 +192,12 @@ func buildMemoryMap(src string) (map[string]int, error) {
 		}
 		switch v := ins.(type) {
 		case load:
-			if v.value.variant != identifier {
+			if v.value.Variant != identifier {
 				continue
 			}
-			_, ok := mem[v.value.literal]
+			_, ok := mem[v.value.Literal]
 			if !ok {
-				mem[v.value.literal] = cursor
+				mem[v.value.Literal] = cursor
 				cursor++
 			}
 		default:

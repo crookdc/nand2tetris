@@ -1,21 +1,22 @@
 package asm
 
 import (
+	"github.com/crookdc/nand2tetris/lexer"
 	"reflect"
 	"testing"
 )
 
 func TestParser_next(t *testing.T) {
-	var assertions = []struct {
+	var tests = []struct {
 		src string
 		res []instruction
 	}{
 		{
 			src: "@17\n",
 			res: []instruction{
-				load{value: token{
-					variant: integer,
-					literal: "17",
+				load{value: lexer.Token[variant]{
+					Variant: integer,
+					Literal: "17",
 				}},
 			},
 		},
@@ -23,9 +24,9 @@ func TestParser_next(t *testing.T) {
 			src: "A=D+1\n",
 			res: []instruction{
 				compute{
-					dest: &token{
-						variant: identifier,
-						literal: "A",
+					dest: &lexer.Token[variant]{
+						Variant: identifier,
+						Literal: "A",
 					},
 					comp: "D+1",
 					jump: nil,
@@ -38,9 +39,9 @@ func TestParser_next(t *testing.T) {
 				compute{
 					dest: nil,
 					comp: "A",
-					jump: &token{
-						variant: jgt,
-						literal: "JGT",
+					jump: &lexer.Token[variant]{
+						Variant: jgt,
+						Literal: "JGT",
 					},
 				},
 			},
@@ -49,28 +50,28 @@ func TestParser_next(t *testing.T) {
 			src: "@i\nD=A\nD=D+1;JNE\n",
 			res: []instruction{
 				load{
-					value: token{
-						variant: identifier,
-						literal: "i",
+					value: lexer.Token[variant]{
+						Variant: identifier,
+						Literal: "i",
 					},
 				},
 				compute{
-					dest: &token{
-						variant: identifier,
-						literal: "D",
+					dest: &lexer.Token[variant]{
+						Variant: identifier,
+						Literal: "D",
 					},
 					comp: "A",
 					jump: nil,
 				},
 				compute{
-					dest: &token{
-						variant: identifier,
-						literal: "D",
+					dest: &lexer.Token[variant]{
+						Variant: identifier,
+						Literal: "D",
 					},
 					comp: "D+1",
-					jump: &token{
-						variant: jne,
-						literal: "JNE",
+					jump: &lexer.Token[variant]{
+						Variant: jne,
+						Literal: "JNE",
 					},
 				},
 			},
@@ -79,48 +80,65 @@ func TestParser_next(t *testing.T) {
 			src: "(loop)\n@1234\nD=A+1\n@loop\n0;JMP\n",
 			res: []instruction{
 				label{
-					value: token{
-						variant: identifier,
-						literal: "loop",
+					value: lexer.Token[variant]{
+						Variant: identifier,
+						Literal: "loop",
 					},
 				},
 				load{
-					value: token{
-						variant: integer,
-						literal: "1234",
+					value: lexer.Token[variant]{
+						Variant: integer,
+						Literal: "1234",
 					},
 				},
 				compute{
-					dest: &token{
-						variant: identifier,
-						literal: "D",
+					dest: &lexer.Token[variant]{
+						Variant: identifier,
+						Literal: "D",
 					},
 					comp: "A+1",
 					jump: nil,
 				},
 				load{
-					value: token{
-						variant: identifier,
-						literal: "loop",
+					value: lexer.Token[variant]{
+						Variant: identifier,
+						Literal: "loop",
 					},
 				},
 				compute{
 					dest: nil,
 					comp: "0",
-					jump: &token{
-						variant: jmp,
-						literal: "JMP",
+					jump: &lexer.Token[variant]{
+						Variant: jmp,
+						Literal: "JMP",
+					},
+				},
+			},
+		},
+		{
+			src: "// This is just a friendly comment\n(loop)\n@1234\n",
+			res: []instruction{
+				label{
+					value: lexer.Token[variant]{
+						Variant: identifier,
+						Literal: "loop",
+					},
+				},
+				load{
+					value: lexer.Token[variant]{
+						Variant: integer,
+						Literal: "1234",
 					},
 				},
 			},
 		},
 	}
-	for _, assert := range assertions {
-		ps := parser{lexer: lexer{src: assert.src}}
+	for _, test := range tests {
+		ps := parser{lexer: LoadedLexer(test.src)}
 		ins, _ := ps.next()
 		for i := 0; ins != nil; i++ {
-			if !reflect.DeepEqual(assert.res[i], ins) {
-				t.Errorf("expected %+v but got %+v", assert.res[i], ins)
+			if !reflect.DeepEqual(test.res[i], ins) {
+				t.Errorf("expected %+v but got %+v", test.res[i].Literal(), ins.Literal())
 			}
 			ins, _ = ps.next()
 		}
