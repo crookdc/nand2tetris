@@ -10,6 +10,7 @@ import (
 const (
 	push variant = iota
 	constant
+	local
 	integer
 )
 
@@ -28,6 +29,7 @@ func newLexer(r io.Reader) (*lexer.Lexer[variant], error) {
 			map[string]variant{
 				"push":     push,
 				"constant": constant,
+				"local":    local,
 			},
 			lexer.Alphabetical,
 		),
@@ -113,6 +115,25 @@ func parseSegmentRead(l *lexer.Lexer[variant]) ([]string, error) {
 		return []string{
 			fmt.Sprintf("@%d", parsed),
 			"D=A",
+		}, nil
+	case local:
+		value, err := l.Next()
+		if err != nil {
+			return nil, err
+		}
+		if value.Variant != integer {
+			return nil, fmt.Errorf("invalid integer token %v", value.Literal)
+		}
+		parsed, err := strconv.Atoi(value.Literal)
+		if err != nil || parsed < 0 {
+			return nil, fmt.Errorf("invalid static index %v", value.Literal)
+		}
+		return []string{
+			"@LCL",
+			"D=M",
+			fmt.Sprintf("@%d", parsed),
+			"A=D+A",
+			"D=M",
 		}, nil
 	default:
 		panic(fmt.Errorf("push type variant %v is not yet supported", token.Variant))

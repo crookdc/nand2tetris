@@ -40,15 +40,53 @@ func TestEvaluate(t *testing.T) {
 		},
 		{
 			src: "push constant -256",
+			ok:  false,
 		},
 		{
 			src: "push constant 32769",
+			ok:  false,
+		},
+		{
+			src: "push local 17",
+			expected: []string{
+				"@LCL",
+				"D=M",
+				"@17",
+				"A=D+A",
+				"D=M",
+				"@SP",
+				"A=M",
+				"M=D",
+				"@SP",
+				"M=M+1",
+			},
+			ok: true,
+		},
+		{
+			src: "push local 0",
+			expected: []string{
+				"@LCL",
+				"D=M",
+				"@0",
+				"A=D+A",
+				"D=M",
+				"@SP",
+				"A=M",
+				"M=D",
+				"@SP",
+				"M=M+1",
+			},
+			ok: true,
+		},
+		{
+			src: "push local -1",
+			ok:  false,
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.src, func(t *testing.T) {
 			actual, err := Evaluate(strings.NewReader(test.src))
-			if err == nil && !test.ok {
+			if (err == nil && !test.ok) || (err != nil && test.ok) {
 				t.Errorf("expected non-nil error but got %v", err)
 			}
 			if !reflect.DeepEqual(actual, test.expected) {
