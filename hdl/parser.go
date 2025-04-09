@@ -1,8 +1,10 @@
 package hdl
 
 import (
+	"errors"
 	"fmt"
 	"github.com/crookdc/nand2tetris/lexer"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -127,18 +129,17 @@ type Parser struct {
 }
 
 func (p *Parser) Parse() ([]Statement, error) {
-	tok, err := p.lexer.Peek()
-	if err != nil {
-		return nil, err
-	}
 	stmts := make([]Statement, 0)
-	for !lexer.EOF(tok) {
+	for {
 		ch, err := p.parse()
 		if err != nil {
 			return nil, err
 		}
 		stmts = append(stmts, ch)
-		tok, err = p.lexer.Peek()
+		_, err = p.lexer.Peek()
+		if errors.Is(err, io.EOF) {
+			break
+		}
 		if err != nil {
 			return nil, err
 		}

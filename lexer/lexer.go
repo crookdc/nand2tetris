@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"fmt"
+	"io"
 	"unicode"
 )
 
@@ -71,13 +72,13 @@ func (l *Lexer[T]) Peek() (Token[T], error) {
 // Next returns the next available token and moves the cursor in preparation for subsequent invocations of Next.
 func (l *Lexer[T]) Next() (Token[T], error) {
 	if l.cursor >= len(l.source) {
-		return Token[T]{Literal: "EOF"}, nil
+		return Token[T]{}, io.EOF
 	}
 	if err := l.Seek(Not(l.ignored)); err != nil {
 		return Token[T]{}, err
 	}
 	if l.cursor >= len(l.source) {
-		return Token[T]{Literal: "EOF"}, nil
+		return Token[T]{}, io.EOF
 	}
 	character := l.source[l.cursor]
 	if symbol, ok := l.symbols[character]; ok {

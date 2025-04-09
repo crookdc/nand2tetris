@@ -1,8 +1,10 @@
 package asm
 
 import (
+	"errors"
 	"fmt"
 	"github.com/crookdc/nand2tetris/lexer"
+	"io"
 )
 
 var (
@@ -132,11 +134,11 @@ func (p *parser) next() (instruction, error) {
 		return nil, err
 	}
 	tok, err := p.lexer.Peek()
+	if errors.Is(err, io.EOF) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
-	}
-	if lexer.EOF(tok) {
-		return nil, nil
 	}
 	switch tok.Variant {
 	case at:
@@ -203,9 +205,12 @@ func (p *parser) c() (comp compute, err error) {
 			return compute{}, err
 		}
 	}
-	for tok.Variant != semicolon && tok.Variant != linefeed && !lexer.EOF(tok) {
+	for tok.Variant != semicolon && tok.Variant != linefeed {
 		comp.comp += tok.Literal
 		tok, err = p.lexer.Next()
+		if errors.Is(err, io.EOF) {
+			break
+		}
 		if err != nil {
 			return compute{}, err
 		}
@@ -228,15 +233,21 @@ func (p *parser) c() (comp compute, err error) {
 
 func (p *parser) seek(fn func(*lexer.Token[variant]) bool) error {
 	tok, err := p.lexer.Peek()
+	if errors.Is(err, io.EOF) {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
-	for fn(&tok) && !lexer.EOF(tok) {
+	for fn(&tok) {
 		_, err = p.lexer.Next()
 		if err != nil {
 			return err
 		}
 		tok, err = p.lexer.Peek()
+		if errors.Is(err, io.EOF) {
+			break
+		}
 		if err != nil {
 			return err
 		}
