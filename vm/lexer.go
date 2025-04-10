@@ -7,6 +7,7 @@ import (
 
 const (
 	push variant = iota
+	pop
 	constant
 	local
 	arg
@@ -29,6 +30,7 @@ func newLexer(r io.Reader) (*lexer.Lexer[variant], error) {
 		lexer.Keywords[variant](
 			map[string]variant{
 				"push":     push,
+				"pop":      pop,
 				"constant": constant,
 				"local":    local,
 				"arg":      arg,
