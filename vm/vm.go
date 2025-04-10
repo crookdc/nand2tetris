@@ -91,20 +91,6 @@ func PopCommand(target Command) CommandFunc {
 	}
 }
 
-func IncrementStack() ([]string, error) {
-	return []string{
-		"@SP",
-		"M=M+1",
-	}, nil
-}
-
-func DecrementStack() ([]string, error) {
-	return []string{
-		"@SP",
-		"M=M-1",
-	}, nil
-}
-
 func PopStack() ([]string, error) {
 	return []string{
 		"@SP",   // Load stack pointer segment
@@ -144,13 +130,83 @@ func AddCommand() ([]string, error) {
 		CommandFunc(PopStack),
 		WriteVirtual("D", "R13"),
 		CommandFunc(PopStack),
-		WriteVirtual("D", "R14"),
 		Constant(
 			"@R13",
-			"D=M",
-			"@R14",
 			"D=D+M",
 		),
+		CommandFunc(PushStack),
+	)
+}
+
+func SubCommand() ([]string, error) {
+	return write(
+		CommandFunc(PopStack),
+		WriteVirtual("D", "R13"),
+		CommandFunc(PopStack),
+		Constant(
+			"@R13",
+			"D=D-M",
+		),
+		CommandFunc(PushStack),
+	)
+}
+
+func NegCommand() ([]string, error) {
+	return write(
+		CommandFunc(PopStack),
+		Constant(
+			"D=-D",
+		),
+		CommandFunc(PushStack),
+	)
+}
+
+func AndCommand() ([]string, error) {
+	return write(
+		CommandFunc(PopStack),
+		WriteVirtual("D", "R13"),
+		CommandFunc(PopStack),
+		Constant(
+			"@R13",
+			"D=D&M",
+		),
+		CommandFunc(PushStack),
+	)
+}
+
+func OrCommand() ([]string, error) {
+	return write(
+		CommandFunc(PopStack),
+		WriteVirtual("D", "R13"),
+		CommandFunc(PopStack),
+		Constant(
+			"@R13",
+			"D=D|M",
+		),
+		CommandFunc(PushStack),
+	)
+}
+
+func NotCommand() ([]string, error) {
+	return write(
+		CommandFunc(PopStack),
+		Constant(
+			"D=!D",
+		),
+		CommandFunc(PushStack),
+	)
+}
+
+func EqCommand() ([]string, error) {
+	return write(
+		CommandFunc(PopStack),
+		WriteVirtual("D", "R13"),
+		CommandFunc(PopStack),
+		Constant(
+			"@R13",
+			"D=D+M",
+		),
+		CommandFunc(PushStack),
 	)
 }
 
@@ -194,57 +250,82 @@ func Evaluate(r io.Reader) ([]string, error) {
 }
 
 func parse(l *lexer.Lexer[variant]) (Command, error) {
-	next, err := l.Next()
+	token, err := l.Next()
 	if err != nil {
 		return nil, err
 	}
-	switch next.Variant {
+	switch token.Variant {
 	case push:
-		src, err := l.Next()
-		if err != nil {
-			return nil, err
-		}
-		index, err := l.Next()
-		if err != nil {
-			return nil, err
-		}
-		if index.Variant != integer {
-			return nil, fmt.Errorf("unexpected token variant %v", index.Variant)
-		}
-		parsed, err := strconv.Atoi(index.Literal)
-		if err != nil {
-			return nil, fmt.Errorf("cannot parse integer: %w", err)
-		}
-		if src.Variant == constant {
-			return PushCommand(ReadConstant(parsed)), nil
-		}
-		segment, ok := segments[src.Variant]
-		if !ok {
-			return nil, fmt.Errorf("unexpected push source %v", src.Literal)
-		}
-		return PushCommand(ReadSegment(segment, parsed)), nil
+		return parsePushCommand(l)
 	case pop:
-		target, err := l.Next()
-		if err != nil {
-			return nil, err
-		}
-		index, err := l.Next()
-		if err != nil {
-			return nil, err
-		}
-		if index.Variant != integer {
-			return nil, fmt.Errorf("unexpected token variant %v", index.Variant)
-		}
-		parsed, err := strconv.Atoi(index.Literal)
-		if err != nil {
-			return nil, fmt.Errorf("cannot parse integer: %w", err)
-		}
-		segment, ok := segments[target.Variant]
-		if !ok {
-			return nil, fmt.Errorf("unexpected pop target %v", target.Literal)
-		}
-		return PopCommand(SegmentTarget(segment, parsed)), nil
+		return parsePopCommand(l)
+	case add:
+		return CommandFunc(AddCommand), nil
+	case sub:
+		return CommandFunc(SubCommand), nil
+	case neg:
+		return CommandFunc(NegCommand), nil
+	case and:
+		return CommandFunc(AndCommand), nil
+	case or:
+		return CommandFunc(OrCommand), nil
+	case not:
+		return CommandFunc(NotCommand), nil
 	default:
-		panic(fmt.Errorf("variant %v is not yet supported", next.Variant))
+		panic(fmt.Errorf("variant %v is not yet supported", token.Variant))
 	}
+}
+
+func parsePushCommand(l *lexer.Lexer[variant]) (Command, error) {
+	src, err := l.Next()
+	if err != nil {
+		return nil, err
+	}
+	index, err := parseInteger(l)
+	if err != nil {
+		return nil, err
+	}
+	if src.Variant == constant {
+		return PushCommand(ReadConstant(index)), nil
+	}
+	segment, ok := segments[src.Variant]
+	if !ok {
+		return nil, fmt.Errorf("unexpected push source %v", src.Literal)
+	}
+	return PushCommand(ReadSegment(segment, index)), nil
+}
+
+func parsePopCommand(l *lexer.Lexer[variant]) (Command, error) {
+	target, err := l.Next()
+	if err != nil {
+		return nil, err
+	}
+	index, err := parseInteger(l)
+	if err != nil {
+		return nil, err
+	}
+	segment, ok := segments[target.Variant]
+	if !ok {
+		return nil, fmt.Errorf("unexpected pop target %v", target.Literal)
+	}
+	return PopCommand(SegmentTarget(segment, index)), nil
+}
+
+func parseInteger(l *lexer.Lexer[variant]) (int, error) {
+	token, err := expect(l, integer)
+	if err != nil {
+		return 0, err
+	}
+	return strconv.Atoi(token.Literal)
+}
+
+func expect(l *lexer.Lexer[variant], v variant) (lexer.Token[variant], error) {
+	token, err := l.Next()
+	if err != nil {
+		return lexer.Token[variant]{}, err
+	}
+	if token.Variant != v {
+		return lexer.Token[variant]{}, fmt.Errorf("expected variant %v but found %v", v, token.Variant)
+	}
+	return token, nil
 }
