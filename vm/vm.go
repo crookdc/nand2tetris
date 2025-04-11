@@ -79,6 +79,7 @@ func PopCommand(target Command) CommandFunc {
 	return func() ([]string, error) {
 		return write(
 			CommandFunc(PopStack),
+			Constant("D=M"),
 			target,
 			Constant(
 				"@SP",
@@ -91,12 +92,11 @@ func PopCommand(target Command) CommandFunc {
 	}
 }
 
+// PopStack sets the A register to point to the popped value in the stack.
 func PopStack() ([]string, error) {
 	return []string{
-		"@SP",   // Load stack pointer segment
-		"M=M-1", // Decrement address of the stack pointer
-		"A=M",   // Set the current memory address to stack pointer value
-		"D=M",   // Grab the value at the address and place it in D
+		"@SP",    // Load stack pointer segment
+		"AM=M-1", // Decrement address of the stack pointer
 	}, nil
 }
 
@@ -109,6 +109,7 @@ func WriteVirtual(src, target string) CommandFunc {
 	}
 }
 
+// PushStack pushes the data currently present in D to the stack. It does not alter the data currently in D.
 func PushStack() ([]string, error) {
 	return []string{
 		"@SP",   // Load stack pointer segment
@@ -128,12 +129,9 @@ func Constant(cmd ...string) CommandFunc {
 func AddCommand() ([]string, error) {
 	return write(
 		CommandFunc(PopStack),
-		WriteVirtual("D", "R13"),
+		Constant("D=M"),
 		CommandFunc(PopStack),
-		Constant(
-			"@R13",
-			"D=D+M",
-		),
+		Constant("D=M+D"),
 		CommandFunc(PushStack),
 	)
 }
@@ -141,12 +139,9 @@ func AddCommand() ([]string, error) {
 func SubCommand() ([]string, error) {
 	return write(
 		CommandFunc(PopStack),
-		WriteVirtual("D", "R13"),
+		Constant("D=M"),
 		CommandFunc(PopStack),
-		Constant(
-			"@R13",
-			"D=D-M",
-		),
+		Constant("D=M-D"),
 		CommandFunc(PushStack),
 	)
 }
@@ -155,7 +150,7 @@ func NegCommand() ([]string, error) {
 	return write(
 		CommandFunc(PopStack),
 		Constant(
-			"D=-D",
+			"D=-M",
 		),
 		CommandFunc(PushStack),
 	)
@@ -164,12 +159,9 @@ func NegCommand() ([]string, error) {
 func AndCommand() ([]string, error) {
 	return write(
 		CommandFunc(PopStack),
-		WriteVirtual("D", "R13"),
+		Constant("D=M"),
 		CommandFunc(PopStack),
-		Constant(
-			"@R13",
-			"D=D&M",
-		),
+		Constant("D=M&D"),
 		CommandFunc(PushStack),
 	)
 }
@@ -177,12 +169,9 @@ func AndCommand() ([]string, error) {
 func OrCommand() ([]string, error) {
 	return write(
 		CommandFunc(PopStack),
-		WriteVirtual("D", "R13"),
+		Constant("D=M"),
 		CommandFunc(PopStack),
-		Constant(
-			"@R13",
-			"D=D|M",
-		),
+		Constant("D=M|D"),
 		CommandFunc(PushStack),
 	)
 }
@@ -191,7 +180,7 @@ func NotCommand() ([]string, error) {
 	return write(
 		CommandFunc(PopStack),
 		Constant(
-			"D=!D",
+			"D=!M",
 		),
 		CommandFunc(PushStack),
 	)
@@ -200,11 +189,58 @@ func NotCommand() ([]string, error) {
 func EqCommand() ([]string, error) {
 	return write(
 		CommandFunc(PopStack),
-		WriteVirtual("D", "R13"),
+		Constant("D=M"),
 		CommandFunc(PopStack),
 		Constant(
-			"@R13",
-			"D=D+M",
+			"D=M-D",
+			"@true",
+			"D;JEQ",
+			"D=0",
+			"@end",
+			"0;JMP",
+			"(true)",
+			"D=-1",
+			"(end)",
+		),
+		CommandFunc(PushStack),
+	)
+}
+
+func LtCommand() ([]string, error) {
+	return write(
+		CommandFunc(PopStack),
+		Constant("D=M"),
+		CommandFunc(PopStack),
+		Constant(
+			"D=M-D",
+			"@true",
+			"D;JLT",
+			"D=0",
+			"@end",
+			"0;JMP",
+			"(true)",
+			"D=-1",
+			"(end)",
+		),
+		CommandFunc(PushStack),
+	)
+}
+
+func GtCommand() ([]string, error) {
+	return write(
+		CommandFunc(PopStack),
+		Constant("D=M"),
+		CommandFunc(PopStack),
+		Constant(
+			"D=M-D",
+			"@true",
+			"D;JGT",
+			"D=0",
+			"@end",
+			"0;JMP",
+			"(true)",
+			"D=-1",
+			"(end)",
 		),
 		CommandFunc(PushStack),
 	)
@@ -271,6 +307,12 @@ func parse(l *lexer.Lexer[variant]) (Command, error) {
 		return CommandFunc(OrCommand), nil
 	case not:
 		return CommandFunc(NotCommand), nil
+	case eq:
+		return CommandFunc(EqCommand), nil
+	case lt:
+		return CommandFunc(LtCommand), nil
+	case gt:
+		return CommandFunc(GtCommand), nil
 	default:
 		panic(fmt.Errorf("variant %v is not yet supported", token.Variant))
 	}
