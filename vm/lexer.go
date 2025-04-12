@@ -18,8 +18,11 @@ const (
 	or
 	not
 	constant
+	static
+	pointer
 	local
 	arg
+	tmp
 	this
 	that
 	integer
@@ -51,9 +54,12 @@ func newLexer(r io.Reader) (*lexer.Lexer[variant], error) {
 				"gt":       gt,
 				"constant": constant,
 				"local":    local,
-				"arg":      arg,
+				"static":   static,
+				"argument": arg,
+				"temp":     tmp,
 				"this":     this,
 				"that":     that,
+				"pointer":  pointer,
 			},
 			lexer.Alphabetical,
 		),

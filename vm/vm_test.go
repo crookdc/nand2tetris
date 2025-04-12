@@ -83,7 +83,7 @@ func TestEvaluate(t *testing.T) {
 			ok:  false,
 		},
 		{
-			src: "push arg 110",
+			src: "push argument 110",
 			expected: []string{
 				"@ARG",
 				"D=M",
@@ -99,7 +99,7 @@ func TestEvaluate(t *testing.T) {
 			ok: true,
 		},
 		{
-			src: "push arg 0",
+			src: "push argument 0",
 			expected: []string{
 				"@ARG",
 				"D=M",
@@ -115,7 +115,7 @@ func TestEvaluate(t *testing.T) {
 			ok: true,
 		},
 		{
-			src: "push arg -1",
+			src: "push argument -1",
 			ok:  false,
 		},
 		{
@@ -191,6 +191,36 @@ func TestEvaluate(t *testing.T) {
 			ok:  false,
 		},
 		{
+			src: "push temp 3",
+			expected: []string{
+				"@8",
+				"D=M",
+				"@SP",
+				"A=M",
+				"M=D",
+				"@SP",
+				"M=M+1",
+			},
+			ok: true,
+		},
+		{
+			src: "push temp 0",
+			expected: []string{
+				"@5",
+				"D=M",
+				"@SP",
+				"A=M",
+				"M=D",
+				"@SP",
+				"M=M+1",
+			},
+			ok: true,
+		},
+		{
+			src: "push temp -1",
+			ok:  false,
+		},
+		{
 			src: "pop local 17",
 			expected: []string{
 				"@SP",
@@ -231,7 +261,7 @@ func TestEvaluate(t *testing.T) {
 			ok:  false,
 		},
 		{
-			src: "pop arg 0",
+			src: "pop argument 0",
 			expected: []string{
 				"@SP",
 				"AM=M-1",
@@ -249,7 +279,7 @@ func TestEvaluate(t *testing.T) {
 			ok: true,
 		},
 		{
-			src: "pop arg 15",
+			src: "pop argument 15",
 			expected: []string{
 				"@SP",
 				"AM=M-1",
@@ -267,7 +297,7 @@ func TestEvaluate(t *testing.T) {
 			ok: true,
 		},
 		{
-			src: "pop arg -1",
+			src: "pop argument -1",
 			ok:  false,
 		},
 		{
@@ -351,6 +381,42 @@ func TestEvaluate(t *testing.T) {
 			ok:  false,
 		},
 		{
+			src: "pop temp 3",
+			expected: []string{
+				"@SP",
+				"AM=M-1",
+				"D=M",
+				"@8",
+				"D=D+A",
+				"@SP",
+				"A=M",
+				"A=M",
+				"A=D-A",
+				"M=D-A",
+			},
+			ok: true,
+		},
+		{
+			src: "pop temp 0",
+			expected: []string{
+				"@SP",
+				"AM=M-1",
+				"D=M",
+				"@5",
+				"D=D+A",
+				"@SP",
+				"A=M",
+				"A=M",
+				"A=D-A",
+				"M=D-A",
+			},
+			ok: true,
+		},
+		{
+			src: "pop temp -1",
+			ok:  false,
+		},
+		{
 			src: "add",
 			expected: []string{
 				"@SP",
@@ -358,7 +424,7 @@ func TestEvaluate(t *testing.T) {
 				"D=M",
 				"@SP",
 				"AM=M-1",
-				"D=M+D",
+				"D=D+M",
 				"@SP",
 				"A=M",
 				"M=D",
@@ -406,7 +472,7 @@ func TestEvaluate(t *testing.T) {
 				"D=M",
 				"@SP",
 				"AM=M-1",
-				"D=M&D",
+				"D=D&M",
 				"@SP",
 				"A=M",
 				"M=D",
@@ -423,7 +489,7 @@ func TestEvaluate(t *testing.T) {
 				"D=M",
 				"@SP",
 				"AM=M-1",
-				"D=M|D",
+				"D=D|M",
 				"@SP",
 				"A=M",
 				"M=D",
@@ -455,14 +521,14 @@ func TestEvaluate(t *testing.T) {
 				"@SP",
 				"AM=M-1",
 				"D=M-D",
-				"@true",
+				"@true_1",
 				"D;JEQ",
 				"D=0",
-				"@end",
+				"@end_1",
 				"0;JMP",
-				"(true)",
+				"(true_1)",
 				"D=-1",
-				"(end)",
+				"(end_1)",
 				"@SP",
 				"A=M",
 				"M=D",
@@ -480,14 +546,14 @@ func TestEvaluate(t *testing.T) {
 				"@SP",
 				"AM=M-1",
 				"D=M-D",
-				"@true",
+				"@true_1",
 				"D;JLT",
 				"D=0",
-				"@end",
+				"@end_1",
 				"0;JMP",
-				"(true)",
+				"(true_1)",
 				"D=-1",
-				"(end)",
+				"(end_1)",
 				"@SP",
 				"A=M",
 				"M=D",
@@ -505,14 +571,14 @@ func TestEvaluate(t *testing.T) {
 				"@SP",
 				"AM=M-1",
 				"D=M-D",
-				"@true",
+				"@true_1",
 				"D;JGT",
 				"D=0",
-				"@end",
+				"@end_1",
 				"0;JMP",
-				"(true)",
+				"(true_1)",
 				"D=-1",
-				"(end)",
+				"(end_1)",
 				"@SP",
 				"A=M",
 				"M=D",
@@ -524,7 +590,7 @@ func TestEvaluate(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.src, func(t *testing.T) {
-			actual, err := Evaluate(strings.NewReader(test.src))
+			actual, err := Translate(strings.NewReader(test.src))
 			if (err == nil && !test.ok) || (err != nil && test.ok) {
 				t.Errorf("expected non-nil error but got %v", err)
 			}

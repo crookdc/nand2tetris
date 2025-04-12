@@ -15,257 +15,42 @@ var segments = map[variant]string{
 	that:  "THAT",
 }
 
-type Command interface {
-	Evaluate() ([]string, error)
-}
-
-type CommandFunc func() ([]string, error)
-
-func (c CommandFunc) Evaluate() ([]string, error) {
-	return c()
-}
-
-func ReadConstant(value int) CommandFunc {
-	return func() ([]string, error) {
-		if value < 0 || value > 32_767 {
-			return nil, fmt.Errorf("invalid constant value %d", value)
-		}
-		return []string{
-			fmt.Sprintf("@%d", value),
-			"D=A",
-		}, nil
-	}
-}
-
-func ReadSegment(sgm string, index int) CommandFunc {
-	return func() ([]string, error) {
-		if index < 0 {
-			return nil, fmt.Errorf("invalid segment index %d", index)
-		}
-		return []string{
-			fmt.Sprintf("@%s", sgm),
-			"D=M",
-			fmt.Sprintf("@%d", index),
-			"A=D+A",
-			"D=M",
-		}, nil
-	}
-}
-
-func PushCommand(src Command) CommandFunc {
-	return func() ([]string, error) {
-		return write(
-			src,
-			CommandFunc(PushStack),
-		)
-	}
-}
-
-func SegmentTarget(segment string, index int) CommandFunc {
-	return func() ([]string, error) {
-		if index < 0 {
-			return nil, fmt.Errorf("invalid segment index %d", index)
-		}
-		return []string{
-			fmt.Sprintf("@%s", segment),
-			"D=D+M",
-			fmt.Sprintf("@%d", index),
-			"D=D+A",
-		}, nil
-	}
-}
-
-func PopCommand(target Command) CommandFunc {
-	return func() ([]string, error) {
-		return write(
-			CommandFunc(PopStack),
-			Constant("D=M"),
-			target,
-			Constant(
-				"@SP",
-				"A=M",
-				"A=M",
-				"A=D-A",
-				"M=D-A",
-			),
-		)
-	}
-}
-
-// PopStack sets the A register to point to the popped value in the stack.
-func PopStack() ([]string, error) {
-	return []string{
-		"@SP",    // Load stack pointer segment
-		"AM=M-1", // Decrement address of the stack pointer
-	}, nil
-}
-
-func WriteVirtual(src, target string) CommandFunc {
-	return func() ([]string, error) {
-		return []string{
-			"@" + target,
-			"M=" + src,
-		}, nil
-	}
-}
-
-// PushStack pushes the data currently present in D to the stack. It does not alter the data currently in D.
-func PushStack() ([]string, error) {
-	return []string{
-		"@SP",   // Load stack pointer segment
-		"A=M",   // Set the current memory address to stack pointer value
-		"M=D",   // Grab the value at the address and place it in D
-		"@SP",   //
-		"M=M+1", // Increment stack pointer
-	}, nil
-}
-
-func Constant(cmd ...string) CommandFunc {
-	return func() ([]string, error) {
-		return cmd, nil
-	}
-}
-
-func AddCommand() ([]string, error) {
-	return write(
-		CommandFunc(PopStack),
-		Constant("D=M"),
-		CommandFunc(PopStack),
-		Constant("D=M+D"),
-		CommandFunc(PushStack),
-	)
-}
-
-func SubCommand() ([]string, error) {
-	return write(
-		CommandFunc(PopStack),
-		Constant("D=M"),
-		CommandFunc(PopStack),
-		Constant("D=M-D"),
-		CommandFunc(PushStack),
-	)
-}
-
-func NegCommand() ([]string, error) {
-	return write(
-		CommandFunc(PopStack),
-		Constant(
-			"D=-M",
-		),
-		CommandFunc(PushStack),
-	)
-}
-
-func AndCommand() ([]string, error) {
-	return write(
-		CommandFunc(PopStack),
-		Constant("D=M"),
-		CommandFunc(PopStack),
-		Constant("D=M&D"),
-		CommandFunc(PushStack),
-	)
-}
-
-func OrCommand() ([]string, error) {
-	return write(
-		CommandFunc(PopStack),
-		Constant("D=M"),
-		CommandFunc(PopStack),
-		Constant("D=M|D"),
-		CommandFunc(PushStack),
-	)
-}
-
-func NotCommand() ([]string, error) {
-	return write(
-		CommandFunc(PopStack),
-		Constant(
-			"D=!M",
-		),
-		CommandFunc(PushStack),
-	)
-}
-
-func EqCommand() ([]string, error) {
-	return write(
-		CommandFunc(PopStack),
-		Constant("D=M"),
-		CommandFunc(PopStack),
-		Constant(
-			"D=M-D",
-			"@true",
-			"D;JEQ",
-			"D=0",
-			"@end",
-			"0;JMP",
-			"(true)",
-			"D=-1",
-			"(end)",
-		),
-		CommandFunc(PushStack),
-	)
-}
-
-func LtCommand() ([]string, error) {
-	return write(
-		CommandFunc(PopStack),
-		Constant("D=M"),
-		CommandFunc(PopStack),
-		Constant(
-			"D=M-D",
-			"@true",
-			"D;JLT",
-			"D=0",
-			"@end",
-			"0;JMP",
-			"(true)",
-			"D=-1",
-			"(end)",
-		),
-		CommandFunc(PushStack),
-	)
-}
-
-func GtCommand() ([]string, error) {
-	return write(
-		CommandFunc(PopStack),
-		Constant("D=M"),
-		CommandFunc(PopStack),
-		Constant(
-			"D=M-D",
-			"@true",
-			"D;JGT",
-			"D=0",
-			"@end",
-			"0;JMP",
-			"(true)",
-			"D=-1",
-			"(end)",
-		),
-		CommandFunc(PushStack),
-	)
-}
-
-func write(commands ...Command) ([]string, error) {
-	asm := make([]string, 0)
-	for _, c := range commands {
-		n, err := c.Evaluate()
-		if err != nil {
-			return nil, err
-		}
-		asm = append(asm, n...)
-	}
-	return asm, nil
-}
-
-func Evaluate(r io.Reader) ([]string, error) {
-	l, err := newLexer(r)
+func Translate(r io.Reader) ([]string, error) {
+	lx, err := newLexer(r)
 	if err != nil {
 		return nil, err
 	}
+	vm := VM{lx: lx}
+	return vm.Translate()
+}
+
+type VM struct {
+	lx       *lexer.Lexer[variant]
+	sequence int32
+	statics  [240]int
+}
+
+func (vm *VM) static(index int) int {
+	if vm.statics[index] > 15 {
+		// The references static has already been allocated in memory
+		return vm.statics[index]
+	}
+	// Find the next available memory address and allocate the index to it
+	current := 15
+	for _, n := range vm.statics {
+		if n > current {
+			current = n
+		}
+	}
+	vm.statics[index] = current + 1
+	return vm.statics[index]
+}
+
+func (vm *VM) Translate() ([]string, error) {
 	commands := make([]Command, 0)
-	for l.More() {
-		cmd, err := parse(l)
+	seq := int32(0)
+	for vm.lx.More() {
+		cmd, err := vm.parseCommand()
 		if errors.Is(err, io.EOF) {
 			break
 		}
@@ -273,6 +58,7 @@ func Evaluate(r io.Reader) ([]string, error) {
 			return nil, err
 		}
 		commands = append(commands, cmd)
+		seq += 1
 	}
 	assembly := make([]string, 0)
 	for _, command := range commands {
@@ -285,16 +71,16 @@ func Evaluate(r io.Reader) ([]string, error) {
 	return assembly, nil
 }
 
-func parse(l *lexer.Lexer[variant]) (Command, error) {
-	token, err := l.Next()
+func (vm *VM) parseCommand() (Command, error) {
+	token, err := vm.lx.Next()
 	if err != nil {
 		return nil, err
 	}
 	switch token.Variant {
 	case push:
-		return parsePushCommand(l)
+		return vm.parsePushCommand()
 	case pop:
-		return parsePopCommand(l)
+		return vm.parsePopCommand()
 	case add:
 		return CommandFunc(AddCommand), nil
 	case sub:
@@ -308,61 +94,83 @@ func parse(l *lexer.Lexer[variant]) (Command, error) {
 	case not:
 		return CommandFunc(NotCommand), nil
 	case eq:
-		return CommandFunc(EqCommand), nil
+		return EqCommand(vm.seq()), nil
 	case lt:
-		return CommandFunc(LtCommand), nil
+		return LtCommand(vm.seq()), nil
 	case gt:
-		return CommandFunc(GtCommand), nil
+		return GtCommand(vm.seq()), nil
 	default:
 		panic(fmt.Errorf("variant %v is not yet supported", token.Variant))
 	}
 }
 
-func parsePushCommand(l *lexer.Lexer[variant]) (Command, error) {
-	src, err := l.Next()
+func (vm *VM) seq() int32 {
+	vm.sequence++
+	return vm.sequence
+}
+
+func (vm *VM) parsePushCommand() (Command, error) {
+	src, err := vm.lx.Next()
 	if err != nil {
 		return nil, err
 	}
-	index, err := parseInteger(l)
+	index, err := vm.parseInteger()
 	if err != nil {
 		return nil, err
 	}
-	if src.Variant == constant {
+	switch src.Variant {
+	case constant:
 		return PushCommand(ReadConstant(index)), nil
+	case tmp:
+		return PushCommand(ReadTemp(index)), nil
+	case pointer:
+		return PushCommand(ReadPointer(index)), nil
+	case static:
+		return PushCommand(ReadMemory(vm.static(index))), nil
+	default:
+		segment, ok := segments[src.Variant]
+		if !ok {
+			return nil, fmt.Errorf("unexpected push source %v", src.Literal)
+		}
+		return PushCommand(ReadSegment(segment, index)), nil
 	}
-	segment, ok := segments[src.Variant]
-	if !ok {
-		return nil, fmt.Errorf("unexpected push source %v", src.Literal)
-	}
-	return PushCommand(ReadSegment(segment, index)), nil
 }
 
-func parsePopCommand(l *lexer.Lexer[variant]) (Command, error) {
-	target, err := l.Next()
+func (vm *VM) parsePopCommand() (Command, error) {
+	target, err := vm.lx.Next()
 	if err != nil {
 		return nil, err
 	}
-	index, err := parseInteger(l)
+	index, err := vm.parseInteger()
 	if err != nil {
 		return nil, err
 	}
-	segment, ok := segments[target.Variant]
-	if !ok {
-		return nil, fmt.Errorf("unexpected pop target %v", target.Literal)
+	switch target.Variant {
+	case tmp:
+		return PopCommand(TempTarget(index)), nil
+	case pointer:
+		return PopCommand(PointerTarget(index)), nil
+	case static:
+		return PopCommand(MemoryTarget(vm.static(index))), nil
+	default:
+		segment, ok := segments[target.Variant]
+		if !ok {
+			return nil, fmt.Errorf("unexpected pop target %v", target.Literal)
+		}
+		return PopCommand(SegmentTarget(segment, index)), nil
 	}
-	return PopCommand(SegmentTarget(segment, index)), nil
 }
 
-func parseInteger(l *lexer.Lexer[variant]) (int, error) {
-	token, err := expect(l, integer)
+func (vm *VM) parseInteger() (int, error) {
+	token, err := vm.expect(integer)
 	if err != nil {
 		return 0, err
 	}
 	return strconv.Atoi(token.Literal)
 }
 
-func expect(l *lexer.Lexer[variant], v variant) (lexer.Token[variant], error) {
-	token, err := l.Next()
+func (vm *VM) expect(v variant) (lexer.Token[variant], error) {
+	token, err := vm.lx.Next()
 	if err != nil {
 		return lexer.Token[variant]{}, err
 	}
