@@ -587,10 +587,165 @@ func TestEvaluate(t *testing.T) {
 			},
 			ok: true,
 		},
+		/*{
+					src: `
+		function Main 0
+			push constant 10
+			call Main.Pow 1
+			return
+		`,
+					expected: []string{
+						"(Main.Main)",
+						// push return address
+						"@Main.Main$ret.0",
+						"D=A",
+						"@SP",
+						"A=M",
+						"M=D",
+						"@SP",
+						"M=M+1",
+						// push LCL
+						"@LCL",
+						"D=A",
+						"@SP",
+						"A=M",
+						"M=D",
+						"@SP",
+						"M=M+1",
+						// push ARG
+						"@ARG",
+						"D=A",
+						"@SP",
+						"A=M",
+						"M=D",
+						"@SP",
+						"M=M+1",
+						// push THIS
+						"@THIS",
+						"D=A",
+						"@SP",
+						"A=M",
+						"M=D",
+						"@SP",
+						"M=M+1",
+						// push THAT
+						"@THAT",
+						"D=A",
+						"@SP",
+						"A=M",
+						"M=D",
+						"@SP",
+						"M=M+1",
+						// ARG=SP-5-0
+						"@SP",
+						"D=M",
+						"@5",
+						"D=D-A",
+						"@0",
+						"D=D-A",
+						"@ARG",
+						"M=D",
+						// LCL=SP
+						"@SP",
+						"D=M",
+						"@LCL",
+						"M=D",
+						// Begin execution on callee
+						"@Main.Pow",
+						"0;JMP",
+						"(Main.Main$ret.0)",
+					},
+					ok: true,
+				},*/
+		{
+			src: "function Pow 2",
+			expected: []string{
+				"(Main.Pow)",
+				// First parameter
+				"@0",
+				"D=A",
+				"@SP",
+				"A=M",
+				"M=D",
+				"@SP",
+				"M=M+1",
+				// Second parameter
+				"@0",
+				"D=A",
+				"@SP",
+				"A=M",
+				"M=D",
+				"@SP",
+				"M=M+1",
+			},
+			ok: true,
+		},
+		{
+			src: `
+// This test also covers comments!
+
+// This is a totally useless function that does nothing :-)
+function Null 0
+	return
+`,
+			expected: []string{
+				"(Main.Null)",
+				"@LCL",
+				"D=M",
+				"@R13",
+				"M=D",
+				"@5",
+				"D=D-A",
+				"@R14",
+				"M=D",
+				"@SP",
+				"AM=M-1",
+				"D=M",
+				"@ARG",
+				"A=M",
+				"M=D",
+				"@ARG",
+				"D=M",
+				"@SP",
+				"M=D+1",
+				"@R13",
+				"A=M-1",
+				"D=M",
+				"@THAT",
+				"M=D",
+				"@R13",
+				"D=M-1",
+				"D=D-1",
+				"A=D",
+				"D=M",
+				"@THIS",
+				"M=D",
+				"@R13",
+				"D=M-1",
+				"D=D-1",
+				"D=D-1",
+				"A=D",
+				"D=M",
+				"@ARG",
+				"M=D",
+				"@R13",
+				"D=M-1",
+				"D=D-1",
+				"D=D-1",
+				"D=D-1",
+				"A=D",
+				"D=M",
+				"@LCL",
+				"M=D",
+				"@R14",
+				"A;JMP",
+			},
+			ok: true,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.src, func(t *testing.T) {
-			actual, err := Translate(strings.NewReader(test.src))
+			actual, err := Translate("Main", strings.NewReader(test.src))
 			if (err == nil && !test.ok) || (err != nil && test.ok) {
 				t.Errorf("expected non-nil error but got %v", err)
 			}

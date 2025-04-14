@@ -15,16 +15,17 @@ var segments = map[variant]string{
 	that:  "THAT",
 }
 
-func Translate(r io.Reader) ([]string, error) {
+func Translate(context string, r io.Reader) ([]string, error) {
 	lx, err := newLexer(r)
 	if err != nil {
 		return nil, err
 	}
-	vm := VM{lx: lx}
+	vm := VM{lx: lx, context: context}
 	return vm.Translate()
 }
 
 type VM struct {
+	context  string
 	lx       *lexer.Lexer[variant]
 	sequence int32
 	statics  [240]int
@@ -99,6 +100,18 @@ func (vm *VM) parseCommand() (Command, error) {
 		return LtCommand(vm.seq()), nil
 	case gt:
 		return GtCommand(vm.seq()), nil
+	case fn:
+		name, err := vm.expect(identifier)
+		if err != nil {
+			return nil, err
+		}
+		vars, err := vm.parseInteger()
+		if err != nil {
+			return nil, err
+		}
+		return FunctionCommand(fmt.Sprintf("%s.%s", vm.context, name.Literal), vars), nil
+	case ret:
+		return CommandFunc(ReturnCommand), nil
 	default:
 		panic(fmt.Errorf("variant %v is not yet supported", token.Variant))
 	}

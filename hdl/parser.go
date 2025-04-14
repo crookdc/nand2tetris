@@ -60,18 +60,18 @@ func NewLexer() *lexer.Lexer[variant] {
 	return lexer.NewLexer[variant](
 		lexer.Params[variant]{
 			Symbols: symbols,
-			Ignore:  lexer.Any(lexer.Whitespace, lexer.Equals('\n')),
+			Ignore:  lexer.Any(lexer.Whitespace, lexer.Equals[variant]('\n')),
 		},
-		lexer.String[variant](str),
+		lexer.StringLiteral[variant](str),
 		lexer.Integer[variant](integer),
 		lexer.Keywords[variant](keywords, lexer.Any(
 			lexer.Alphabetical,
-			lexer.Equals('-'),
-			lexer.Equals('>'),
+			lexer.Equals[variant]('-'),
+			lexer.Equals[variant]('>'),
 		)),
 		lexer.Condition[variant](identifier, lexer.Any(
 			lexer.Alphanumeric,
-			lexer.Equals('_'),
+			lexer.Equals[variant]('_'),
 		)),
 	)
 }

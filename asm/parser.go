@@ -62,17 +62,20 @@ func NewLexer() *lexer.Lexer[variant] {
 	return lexer.NewLexer[variant](
 		lexer.Params[variant]{
 			Symbols: symbols,
-			Ignore:  lexer.All(lexer.Whitespace, lexer.Not(lexer.Equals('\n'))),
+			Ignore: lexer.All(
+				lexer.Whitespace,
+				lexer.Not(lexer.Equals[variant]('\n')),
+				lexer.LineComment[variant]("//"),
+			),
 		},
-		lexer.LineComment[variant](comment, "//"),
 		lexer.Integer[variant](integer),
 		lexer.Keywords[variant](keywords, lexer.Alphabetical),
 		lexer.Condition(identifier, lexer.Any(
 			lexer.Alphanumeric,
-			lexer.Equals('_'),
-			lexer.Equals('.'),
-			lexer.Equals('$'),
-			lexer.Equals(':'),
+			lexer.Equals[variant]('_'),
+			lexer.Equals[variant]('.'),
+			lexer.Equals[variant]('$'),
+			lexer.Equals[variant](':'),
 		)),
 	)
 }

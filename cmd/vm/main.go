@@ -27,7 +27,7 @@ func main() {
 			log.Fatal(err)
 		}
 	}()
-	asm, err := vm.Translate(f)
+	asm, err := vm.Translate(*file, f)
 	if err != nil {
 		log.Fatal(err)
 	}

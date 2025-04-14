@@ -3,30 +3,23 @@ package lexer
 // LineComment produces a Func delegate that can be used to process line comments. A line comment is defined as a
 // comment that starts with the character sequence provided in start and that stretches until the next linefeed
 // character.
-func LineComment[T any](variant T, start string) Func[T] {
-	return func(l *Lexer[T], c uint8) (Token[T], bool, error) {
+func LineComment[T any](start string) ConditionFunc[T] {
+	return func(l *Lexer[T], c uint8) bool {
 		previous := l.cursor
 		for i := range start {
 			if start[i] != c {
 				// The tokens at the current position did not match the identifier for starting a line comment, so
 				// rewind the cursor and return.
 				l.cursor = previous
-				return Token[T]{}, false, nil
+				return false
 			}
 			l.cursor++
 			c = l.source[l.cursor]
 		}
-		if err := l.Seek(Equals('\n')); err != nil {
-			return Token[T]{}, false, err
+		if err := l.Seek(Equals[T]('\n')); err != nil {
+			return false
 		}
-		l.cursor++
-		if err := l.Seek(Not(l.ignored)); err != nil {
-			return Token[T]{}, false, err
-		}
-		c = l.source[l.cursor]
-		return Token[T]{
-			Variant: variant,
-		}, true, nil
+		return true
 	}
 }
 
@@ -35,24 +28,24 @@ func LineComment[T any](variant T, start string) Func[T] {
 // considered an integer literal but rather some other token followed by an integer literal, in this case "10".
 func Integer[T any](variant T) Func[T] {
 	return func(l *Lexer[T], c uint8) (Token[T], bool, error) {
-		if !Numerical(c) {
+		if !Numerical(l, c) {
 			return Token[T]{}, false, nil
 		}
 		token := Token[T]{
 			Variant: variant,
-			Literal: l.literal(Numerical),
+			Literal: l.literal(Numerical[T]),
 		}
 		return token, true, nil
 	}
 }
 
-func String[T any](variant T) Func[T] {
+func StringLiteral[T any](variant T) Func[T] {
 	return func(l *Lexer[T], c uint8) (Token[T], bool, error) {
 		if c != '"' {
 			return Token[T]{}, false, nil
 		}
 		l.cursor++
-		literal := l.literal(func(c uint8) bool {
+		literal := l.literal(func(lx *Lexer[T], c uint8) bool {
 			return c != '"'
 		})
 		l.cursor++
@@ -67,15 +60,15 @@ func String[T any](variant T) Func[T] {
 // ConditionFunc is a function that accepts a byte from the lexer and returns a boolean value based on whether the
 // underlying condition is met. The lexer package provides several ConditionFunc values, such as Whitespace and
 // Numerical.
-type ConditionFunc func(uint8) bool
+type ConditionFunc[T any] func(lx *Lexer[T], c uint8) bool
 
 // Any constructs a complex ConditionFunc which yields true whenever any of the underlying ConditionFunc implementations
 // do. The resulting ConditionFunc is effectively a sequence of the provided ConditionFunc implementations connected by
 // an OR operator.
-func Any(fns ...ConditionFunc) ConditionFunc {
-	return func(c uint8) bool {
+func Any[T any](fns ...ConditionFunc[T]) ConditionFunc[T] {
+	return func(lx *Lexer[T], c uint8) bool {
 		for _, fn := range fns {
-			if fn(c) {
+			if fn(lx, c) {
 				return true
 			}
 		}
@@ -84,10 +77,10 @@ func Any(fns ...ConditionFunc) ConditionFunc {
 }
 
 // All products a composite ConditionFunc that returns true only when all the underlying ConditionFunc's do.
-func All(fns ...ConditionFunc) ConditionFunc {
-	return func(c uint8) bool {
+func All[T any](fns ...ConditionFunc[T]) ConditionFunc[T] {
+	return func(lx *Lexer[T], c uint8) bool {
 		for _, fn := range fns {
-			if !fn(c) {
+			if !fn(lx, c) {
 				return false
 			}
 		}
@@ -96,24 +89,24 @@ func All(fns ...ConditionFunc) ConditionFunc {
 }
 
 // Equals produces a ConditionFunc that returns true whenever c is equal to target and false otherwise.
-func Equals(target uint8) ConditionFunc {
-	return func(c uint8) bool {
+func Equals[T any](target uint8) ConditionFunc[T] {
+	return func(lx *Lexer[T], c uint8) bool {
 		return c == target
 	}
 }
 
 // Not produces a ConditionFunc that will always return the opposite of the result returned by fn.
-func Not(fn ConditionFunc) ConditionFunc {
-	return func(c uint8) bool {
-		return !fn(c)
+func Not[T any](fn ConditionFunc[T]) ConditionFunc[T] {
+	return func(lx *Lexer[T], c uint8) bool {
+		return !fn(lx, c)
 	}
 }
 
 // Condition takes a variant and a ConditionFunc and returns a Func capable of parsing bytes in a sequence that adhere to
 // the conditions of the ConditionFunc.
-func Condition[T any](variant T, fn ConditionFunc) Func[T] {
+func Condition[T any](variant T, fn ConditionFunc[T]) Func[T] {
 	return func(l *Lexer[T], c uint8) (Token[T], bool, error) {
-		if !fn(c) {
+		if !fn(l, c) {
 			return Token[T]{}, false, nil
 		}
 		token := Token[T]{
@@ -126,10 +119,10 @@ func Condition[T any](variant T, fn ConditionFunc) Func[T] {
 
 // Keywords constructs a Func capable of parsing any keyword in a map of keywords. It is the callers responsibility to
 // provide a ConditionFunc that can properly cover all possible values of the keywords.
-func Keywords[T any](keywords map[string]T, fn ConditionFunc) Func[T] {
+func Keywords[T any](keywords map[string]T, fn ConditionFunc[T]) Func[T] {
 	return func(l *Lexer[T], c uint8) (Token[T], bool, error) {
 		previous := l.cursor
-		if !fn(c) {
+		if !fn(l, c) {
 			return Token[T]{}, false, nil
 		}
 		literal := l.literal(fn)

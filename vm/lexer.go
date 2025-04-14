@@ -26,6 +26,9 @@ const (
 	this
 	that
 	integer
+	fn
+	identifier
+	ret
 )
 
 func newLexer(r io.Reader) (*lexer.Lexer[variant], error) {
@@ -36,7 +39,10 @@ func newLexer(r io.Reader) (*lexer.Lexer[variant], error) {
 	l := lexer.NewLexer[variant](
 		lexer.Params[variant]{
 			Symbols: make(map[uint8]variant),
-			Ignore:  lexer.Whitespace,
+			Ignore: lexer.Any(
+				lexer.Whitespace[variant],
+				lexer.LineComment[variant]("//"),
+			),
 		},
 		lexer.Integer[variant](integer),
 		lexer.Keywords[variant](
@@ -60,9 +66,15 @@ func newLexer(r io.Reader) (*lexer.Lexer[variant], error) {
 				"this":     this,
 				"that":     that,
 				"pointer":  pointer,
+				"function": fn,
+				"return":   ret,
 			},
 			lexer.Alphabetical,
 		),
+		lexer.Condition[variant](identifier, lexer.Any[variant](
+			lexer.Alphanumeric,
+			lexer.Equals[variant]('_'),
+		)),
 	)
 	l.Load(string(src))
 	return l, nil

@@ -323,6 +323,80 @@ func GtCommand(seq int32) CommandFunc {
 	}
 }
 
+func FunctionCommand(name string, vars int) CommandFunc {
+	return func() ([]string, error) {
+		commands := make([]Command, 0, vars+1)
+		commands = append(commands, Constant(fmt.Sprintf("(%s)", name)))
+		for range vars {
+			commands = append(commands, PushCommand(ReadConstant(0)))
+		}
+		return write(commands...)
+	}
+}
+
+func ReturnCommand() ([]string, error) {
+	return write(
+		Constant(
+			"@LCL",
+			"D=M",
+			"@R13",
+			"M=D",
+			"@5",
+			"D=D-A",
+			// return address
+			"@R14",
+			"M=D",
+			// ARG=pop
+			"@SP",
+			"AM=M-1",
+			"D=M",
+			"@ARG",
+			"A=M",
+			"M=D",
+			"@ARG",
+			"D=M",
+			"@SP",
+			"M=D+1",
+			// THAT=frame-1
+			"@R13",
+			"A=M-1",
+			"D=M",
+			"@THAT",
+			"M=D",
+			// THIS=frame-2
+			"@R13",
+			"D=M-1",
+			"D=D-1",
+			"A=D",
+			"D=M",
+			"@THIS",
+			"M=D",
+			// ARG=frame-3
+			"@R13",
+			"D=M-1",
+			"D=D-1",
+			"D=D-1",
+			"A=D",
+			"D=M",
+			"@ARG",
+			"M=D",
+			// LCL=frame-4
+			"@R13",
+			"D=M-1",
+			"D=D-1",
+			"D=D-1",
+			"D=D-1",
+			"A=D",
+			"D=M",
+			"@LCL",
+			"M=D",
+			// JMP to return address
+			"@R14",
+			"A;JMP",
+		),
+	)
+}
+
 func write(commands ...Command) ([]string, error) {
 	asm := make([]string, 0)
 	for _, c := range commands {
