@@ -29,6 +29,7 @@ const (
 	fn
 	identifier
 	ret
+	call
 )
 
 func newLexer(r io.Reader) (*lexer.Lexer[variant], error) {
@@ -68,12 +69,15 @@ func newLexer(r io.Reader) (*lexer.Lexer[variant], error) {
 				"pointer":  pointer,
 				"function": fn,
 				"return":   ret,
+				"call":     call,
 			},
 			lexer.Alphabetical,
 		),
 		lexer.Condition[variant](identifier, lexer.Any[variant](
 			lexer.Alphanumeric,
 			lexer.Equals[variant]('_'),
+			lexer.Equals[variant]('.'),
+			lexer.Equals[variant]('$'),
 		)),
 	)
 	l.Load(string(src))

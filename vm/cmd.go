@@ -24,6 +24,24 @@ func ReadConstant(value int) CommandFunc {
 	}
 }
 
+func ReadNamed(lbl string) CommandFunc {
+	return func() ([]string, error) {
+		return []string{
+			fmt.Sprintf("@%s", lbl),
+			"D=A",
+		}, nil
+	}
+}
+
+func ReadNamedMemory(value string) CommandFunc {
+	return func() ([]string, error) {
+		return []string{
+			fmt.Sprintf("@%s", value),
+			"D=M",
+		}, nil
+	}
+}
+
 func ReadMemory(value int) CommandFunc {
 	return func() ([]string, error) {
 		if value < 0 || value > 32_767 {
@@ -257,7 +275,7 @@ func NotCommand() ([]string, error) {
 	)
 }
 
-func EqCommand(seq int32) CommandFunc {
+func EqCommand(seq int) CommandFunc {
 	return func() ([]string, error) {
 		return write(
 			CommandFunc(PopStack),
@@ -279,7 +297,7 @@ func EqCommand(seq int32) CommandFunc {
 	}
 }
 
-func LtCommand(seq int32) CommandFunc {
+func LtCommand(seq int) CommandFunc {
 	return func() ([]string, error) {
 		return write(
 			CommandFunc(PopStack),
@@ -301,7 +319,7 @@ func LtCommand(seq int32) CommandFunc {
 	}
 }
 
-func GtCommand(seq int32) CommandFunc {
+func GtCommand(seq int) CommandFunc {
 	return func() ([]string, error) {
 		return write(
 			CommandFunc(PopStack),
@@ -365,36 +383,82 @@ func ReturnCommand() ([]string, error) {
 			"M=D",
 			// THIS=frame-2
 			"@R13",
-			"D=M-1",
-			"D=D-1",
+			"D=M",
+			"@2",
+			"D=D-A",
 			"A=D",
 			"D=M",
 			"@THIS",
 			"M=D",
 			// ARG=frame-3
 			"@R13",
-			"D=M-1",
-			"D=D-1",
-			"D=D-1",
+			"D=M",
+			"@3",
+			"D=D-A",
 			"A=D",
 			"D=M",
 			"@ARG",
 			"M=D",
 			// LCL=frame-4
 			"@R13",
-			"D=M-1",
-			"D=D-1",
-			"D=D-1",
-			"D=D-1",
+			"D=M",
+			"@4",
+			"D=D-A",
 			"A=D",
 			"D=M",
 			"@LCL",
 			"M=D",
 			// JMP to return address
 			"@R14",
-			"A;JMP",
+			"0;JMP",
 		),
 	)
+}
+
+func Subtract(loader Command, n int) CommandFunc {
+	if n < 0 {
+		panic(fmt.Errorf("invalid subtraction operand: %v", n))
+	}
+	return func() ([]string, error) {
+		asm, err := loader.Evaluate()
+		if err != nil {
+			return nil, err
+		}
+		asm = append(
+			asm,
+			fmt.Sprintf("@%d", n),
+			"D=D-A",
+		)
+		return asm, nil
+	}
+}
+
+func CallCommand(function string, n int, seq int) CommandFunc {
+	return func() ([]string, error) {
+		return write(
+			PushCommand(ReadNamed(fmt.Sprintf("%s$ret%d", function, seq))),
+			PushCommand(ReadNamedMemory("LCL")),
+			PushCommand(ReadNamedMemory("ARG")),
+			PushCommand(ReadNamedMemory("THIS")),
+			PushCommand(ReadNamedMemory("THAT")),
+			Constant(
+				"@SP",
+				"D=M",
+				"@LCL",
+				"M=D",
+			),
+			Subtract(ReadNamedMemory("SP"), 5+n),
+			Constant(
+				"@ARG",
+				"M=D",
+			),
+			Constant(
+				fmt.Sprintf("@%s", function),
+				"0;JMP",
+				fmt.Sprintf("(%s.ret$%d)", function, seq),
+			),
+		)
+	}
 }
 
 func write(commands ...Command) ([]string, error) {

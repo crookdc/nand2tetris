@@ -27,7 +27,7 @@ func Translate(context string, r io.Reader) ([]string, error) {
 type VM struct {
 	context  string
 	lx       *lexer.Lexer[variant]
-	sequence int32
+	sequence int
 	statics  [240]int
 }
 
@@ -112,12 +112,22 @@ func (vm *VM) parseCommand() (Command, error) {
 		return FunctionCommand(fmt.Sprintf("%s.%s", vm.context, name.Literal), vars), nil
 	case ret:
 		return CommandFunc(ReturnCommand), nil
+	case call:
+		function, err := vm.expect(identifier)
+		if err != nil {
+			return nil, err
+		}
+		args, err := vm.parseInteger()
+		if err != nil {
+			return nil, err
+		}
+		return CallCommand(function.Literal, args, vm.seq()), nil
 	default:
 		panic(fmt.Errorf("variant %v is not yet supported", token.Variant))
 	}
 }
 
-func (vm *VM) seq() int32 {
+func (vm *VM) seq() int {
 	vm.sequence++
 	return vm.sequence
 }

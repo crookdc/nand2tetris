@@ -62,9 +62,11 @@ func NewLexer() *lexer.Lexer[variant] {
 	return lexer.NewLexer[variant](
 		lexer.Params[variant]{
 			Symbols: symbols,
-			Ignore: lexer.All(
-				lexer.Whitespace,
-				lexer.Not(lexer.Equals[variant]('\n')),
+			Ignore: lexer.Any(
+				lexer.All(
+					lexer.Whitespace,
+					lexer.Not(lexer.Equals[variant]('\n')),
+				),
 				lexer.LineComment[variant]("//"),
 			),
 		},
