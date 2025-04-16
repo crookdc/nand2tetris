@@ -605,7 +605,7 @@ func TestEvaluate(t *testing.T) {
 				"@SP",
 				"M=M+1",
 				// call Main.Pow 1
-				"@Main.Pow$ret1",
+				"@Main.Main$ret1",
 				"D=A",
 				"@SP",
 				"A=M",
@@ -659,7 +659,7 @@ func TestEvaluate(t *testing.T) {
 
 				"@Main.Pow",
 				"0;JMP",
-				"(Main.Pow.ret$1)",
+				"(Main.Main.ret$1)",
 
 				// return
 				"@LCL",

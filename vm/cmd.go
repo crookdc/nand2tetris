@@ -433,10 +433,10 @@ func Subtract(loader Command, n int) CommandFunc {
 	}
 }
 
-func CallCommand(function string, n int, seq int) CommandFunc {
+func CallCommand(caller string, callee string, n int, seq int) CommandFunc {
 	return func() ([]string, error) {
 		return write(
-			PushCommand(ReadNamed(fmt.Sprintf("%s$ret%d", function, seq))),
+			PushCommand(ReadNamed(fmt.Sprintf("%s$ret%d", caller, seq))),
 			PushCommand(ReadNamedMemory("LCL")),
 			PushCommand(ReadNamedMemory("ARG")),
 			PushCommand(ReadNamedMemory("THIS")),
@@ -453,9 +453,9 @@ func CallCommand(function string, n int, seq int) CommandFunc {
 				"M=D",
 			),
 			Constant(
-				fmt.Sprintf("@%s", function),
+				fmt.Sprintf("@%s", callee),
 				"0;JMP",
-				fmt.Sprintf("(%s.ret$%d)", function, seq),
+				fmt.Sprintf("(%s.ret$%d)", caller, seq),
 			),
 		)
 	}

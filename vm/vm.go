@@ -15,16 +15,17 @@ var segments = map[variant]string{
 	that:  "THAT",
 }
 
-func Translate(context string, r io.Reader) ([]string, error) {
+func Translate(file string, r io.Reader) ([]string, error) {
 	lx, err := newLexer(r)
 	if err != nil {
 		return nil, err
 	}
-	vm := VM{lx: lx, context: context}
+	vm := VM{lx: lx, file: file}
 	return vm.Translate()
 }
 
 type VM struct {
+	file     string
 	context  string
 	lx       *lexer.Lexer[variant]
 	sequence int
@@ -109,11 +110,12 @@ func (vm *VM) parseCommand() (Command, error) {
 		if err != nil {
 			return nil, err
 		}
-		return FunctionCommand(fmt.Sprintf("%s.%s", vm.context, name.Literal), vars), nil
+		vm.context = name.Literal
+		return FunctionCommand(fmt.Sprintf("%s.%s", vm.file, vm.context), vars), nil
 	case ret:
 		return CommandFunc(ReturnCommand), nil
 	case call:
-		function, err := vm.expect(identifier)
+		callee, err := vm.expect(identifier)
 		if err != nil {
 			return nil, err
 		}
@@ -121,7 +123,8 @@ func (vm *VM) parseCommand() (Command, error) {
 		if err != nil {
 			return nil, err
 		}
-		return CallCommand(function.Literal, args, vm.seq()), nil
+		caller := fmt.Sprintf("%s.%s", vm.file, vm.context)
+		return CallCommand(caller, callee.Literal, args, vm.seq()), nil
 	default:
 		panic(fmt.Errorf("variant %v is not yet supported", token.Variant))
 	}
