@@ -104,7 +104,7 @@ func PushCommand(src Command) CommandFunc {
 	return func() ([]string, error) {
 		return write(
 			src,
-			CommandFunc(PushStack),
+			CommandFunc(PushD),
 		)
 	}
 }
@@ -167,7 +167,7 @@ func MemoryTarget(address int) CommandFunc {
 func PopCommand(target Command) CommandFunc {
 	return func() ([]string, error) {
 		return write(
-			CommandFunc(PopStack),
+			CommandFunc(Pop),
 			Constant("D=M"),
 			target,
 			Constant(
@@ -181,8 +181,8 @@ func PopCommand(target Command) CommandFunc {
 	}
 }
 
-// PopStack sets the A register to point to the popped value in the stack.
-func PopStack() ([]string, error) {
+// Pop sets the A register to point to the popped value in the stack.
+func Pop() ([]string, error) {
 	return []string{
 		"@SP",    // Load stack pointer segment
 		"AM=M-1", // Decrement address of the stack pointer
@@ -198,8 +198,8 @@ func WriteVirtual(src, target string) CommandFunc {
 	}
 }
 
-// PushStack pushes the data currently present in D to the stack. It does not alter the data currently in D.
-func PushStack() ([]string, error) {
+// PushD pushes the data currently present in D to the stack. It does not alter the data currently in D.
+func PushD() ([]string, error) {
 	return []string{
 		"@SP",   // Load stack pointer segment
 		"A=M",   // Set the current memory address to stack pointer value
@@ -217,70 +217,70 @@ func Constant(cmd ...string) CommandFunc {
 
 func AddCommand() ([]string, error) {
 	return write(
-		CommandFunc(PopStack),
+		CommandFunc(Pop),
 		Constant("D=M"),
-		CommandFunc(PopStack),
+		CommandFunc(Pop),
 		Constant("D=D+M"),
-		CommandFunc(PushStack),
+		CommandFunc(PushD),
 	)
 }
 
 func SubCommand() ([]string, error) {
 	return write(
-		CommandFunc(PopStack),
+		CommandFunc(Pop),
 		Constant("D=M"),
-		CommandFunc(PopStack),
+		CommandFunc(Pop),
 		Constant("D=M-D"),
-		CommandFunc(PushStack),
+		CommandFunc(PushD),
 	)
 }
 
 func NegCommand() ([]string, error) {
 	return write(
-		CommandFunc(PopStack),
+		CommandFunc(Pop),
 		Constant(
 			"D=-M",
 		),
-		CommandFunc(PushStack),
+		CommandFunc(PushD),
 	)
 }
 
 func AndCommand() ([]string, error) {
 	return write(
-		CommandFunc(PopStack),
+		CommandFunc(Pop),
 		Constant("D=M"),
-		CommandFunc(PopStack),
+		CommandFunc(Pop),
 		Constant("D=D&M"),
-		CommandFunc(PushStack),
+		CommandFunc(PushD),
 	)
 }
 
 func OrCommand() ([]string, error) {
 	return write(
-		CommandFunc(PopStack),
+		CommandFunc(Pop),
 		Constant("D=M"),
-		CommandFunc(PopStack),
+		CommandFunc(Pop),
 		Constant("D=D|M"),
-		CommandFunc(PushStack),
+		CommandFunc(PushD),
 	)
 }
 
 func NotCommand() ([]string, error) {
 	return write(
-		CommandFunc(PopStack),
+		CommandFunc(Pop),
 		Constant(
 			"D=!M",
 		),
-		CommandFunc(PushStack),
+		CommandFunc(PushD),
 	)
 }
 
 func EqCommand(seq int) CommandFunc {
 	return func() ([]string, error) {
 		return write(
-			CommandFunc(PopStack),
+			CommandFunc(Pop),
 			Constant("D=M"),
-			CommandFunc(PopStack),
+			CommandFunc(Pop),
 			Constant(
 				"D=M-D",
 				fmt.Sprintf("@true_%d", seq),
@@ -292,7 +292,7 @@ func EqCommand(seq int) CommandFunc {
 				"D=-1",
 				fmt.Sprintf("(end_%d)", seq),
 			),
-			CommandFunc(PushStack),
+			CommandFunc(PushD),
 		)
 	}
 }
@@ -300,9 +300,9 @@ func EqCommand(seq int) CommandFunc {
 func LtCommand(seq int) CommandFunc {
 	return func() ([]string, error) {
 		return write(
-			CommandFunc(PopStack),
+			CommandFunc(Pop),
 			Constant("D=M"),
-			CommandFunc(PopStack),
+			CommandFunc(Pop),
 			Constant(
 				"D=M-D",
 				fmt.Sprintf("@true_%d", seq),
@@ -314,7 +314,7 @@ func LtCommand(seq int) CommandFunc {
 				"D=-1",
 				fmt.Sprintf("(end_%d)", seq),
 			),
-			CommandFunc(PushStack),
+			CommandFunc(PushD),
 		)
 	}
 }
@@ -322,9 +322,9 @@ func LtCommand(seq int) CommandFunc {
 func GtCommand(seq int) CommandFunc {
 	return func() ([]string, error) {
 		return write(
-			CommandFunc(PopStack),
+			CommandFunc(Pop),
 			Constant("D=M"),
-			CommandFunc(PopStack),
+			CommandFunc(Pop),
 			Constant(
 				"D=M-D",
 				fmt.Sprintf("@true_%d", seq),
@@ -336,7 +336,7 @@ func GtCommand(seq int) CommandFunc {
 				"D=-1",
 				fmt.Sprintf("(end_%d)", seq),
 			),
-			CommandFunc(PushStack),
+			CommandFunc(PushD),
 		)
 	}
 }

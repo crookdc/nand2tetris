@@ -3,20 +3,13 @@ package vm
 import (
 	"errors"
 	"fmt"
-	"github.com/crookdc/nand2tetris/lexer"
+	"github.com/crookdc/nand2tetris/vm/internal"
 	"io"
 	"strconv"
 )
 
-var segments = map[variant]string{
-	local: "LCL",
-	arg:   "ARG",
-	this:  "THIS",
-	that:  "THAT",
-}
-
 func Translate(file string, r io.Reader) ([]string, error) {
-	lx, err := newLexer(r)
+	lx, err := internal.NewLexer(r)
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +20,7 @@ func Translate(file string, r io.Reader) ([]string, error) {
 type VM struct {
 	file     string
 	context  string
-	lx       *lexer.Lexer[variant]
+	lx       internal.Lexer
 	sequence int
 	statics  [240]int
 }
@@ -79,30 +72,30 @@ func (vm *VM) parseCommand() (Command, error) {
 		return nil, err
 	}
 	switch token.Variant {
-	case push:
+	case internal.Push:
 		return vm.parsePushCommand()
-	case pop:
+	case internal.Pop:
 		return vm.parsePopCommand()
-	case add:
+	case internal.Add:
 		return CommandFunc(AddCommand), nil
-	case sub:
+	case internal.Sub:
 		return CommandFunc(SubCommand), nil
-	case neg:
+	case internal.Neg:
 		return CommandFunc(NegCommand), nil
-	case and:
+	case internal.And:
 		return CommandFunc(AndCommand), nil
-	case or:
+	case internal.Or:
 		return CommandFunc(OrCommand), nil
-	case not:
+	case internal.Not:
 		return CommandFunc(NotCommand), nil
-	case eq:
+	case internal.Eq:
 		return EqCommand(vm.seq()), nil
-	case lt:
+	case internal.Lt:
 		return LtCommand(vm.seq()), nil
-	case gt:
+	case internal.Gt:
 		return GtCommand(vm.seq()), nil
-	case fn:
-		name, err := vm.expect(identifier)
+	case internal.Function:
+		name, err := vm.expect(internal.Identifier)
 		if err != nil {
 			return nil, err
 		}
@@ -112,10 +105,10 @@ func (vm *VM) parseCommand() (Command, error) {
 		}
 		vm.context = name.Literal
 		return FunctionCommand(fmt.Sprintf("%s.%s", vm.file, vm.context), vars), nil
-	case ret:
+	case internal.Return:
 		return CommandFunc(ReturnCommand), nil
-	case call:
-		callee, err := vm.expect(identifier)
+	case internal.Call:
+		callee, err := vm.expect(internal.Identifier)
 		if err != nil {
 			return nil, err
 		}
@@ -125,6 +118,40 @@ func (vm *VM) parseCommand() (Command, error) {
 		}
 		caller := fmt.Sprintf("%s.%s", vm.file, vm.context)
 		return CallCommand(caller, callee.Literal, args, vm.seq()), nil
+	case internal.Label:
+		name, err := vm.expect(internal.Identifier)
+		if err != nil {
+			return nil, err
+		}
+		return CommandFunc(func() ([]string, error) {
+			return []string{fmt.Sprintf("(%s)", name.Literal)}, nil
+		}), nil
+	case internal.Goto:
+		name, err := vm.expect(internal.Identifier)
+		if err != nil {
+			return nil, err
+		}
+		return CommandFunc(func() ([]string, error) {
+			return []string{
+				fmt.Sprintf("@%s", name.Literal),
+				"0;JMP",
+			}, nil
+		}), nil
+	case internal.IfGoto:
+		label, err := vm.expect(internal.Identifier)
+		if err != nil {
+			return nil, err
+		}
+		return CommandFunc(func() ([]string, error) {
+			return write(
+				CommandFunc(Pop),
+				Constant(
+					"D=M",
+					fmt.Sprintf("@%s", label.Literal),
+					"D;JGT",
+				),
+			)
+		}), nil
 	default:
 		panic(fmt.Errorf("variant %v is not yet supported", token.Variant))
 	}
@@ -145,20 +172,24 @@ func (vm *VM) parsePushCommand() (Command, error) {
 		return nil, err
 	}
 	switch src.Variant {
-	case constant:
+	case internal.Constant:
 		return PushCommand(ReadConstant(index)), nil
-	case tmp:
+	case internal.Tmp:
 		return PushCommand(ReadTemp(index)), nil
-	case pointer:
+	case internal.Pointer:
 		return PushCommand(ReadPointer(index)), nil
-	case static:
+	case internal.Static:
 		return PushCommand(ReadMemory(vm.static(index))), nil
+	case internal.Local:
+		return PushCommand(ReadSegment("LCL", index)), nil
+	case internal.Arg:
+		return PushCommand(ReadSegment("ARG", index)), nil
+	case internal.This:
+		return PushCommand(ReadSegment("THIS", index)), nil
+	case internal.That:
+		return PushCommand(ReadSegment("THAT", index)), nil
 	default:
-		segment, ok := segments[src.Variant]
-		if !ok {
-			return nil, fmt.Errorf("unexpected push source %v", src.Literal)
-		}
-		return PushCommand(ReadSegment(segment, index)), nil
+		return nil, fmt.Errorf("unexpected variant: %v", src.Variant)
 	}
 }
 
@@ -172,36 +203,40 @@ func (vm *VM) parsePopCommand() (Command, error) {
 		return nil, err
 	}
 	switch target.Variant {
-	case tmp:
+	case internal.Tmp:
 		return PopCommand(TempTarget(index)), nil
-	case pointer:
+	case internal.Pointer:
 		return PopCommand(PointerTarget(index)), nil
-	case static:
+	case internal.Static:
 		return PopCommand(MemoryTarget(vm.static(index))), nil
+	case internal.Local:
+		return PopCommand(SegmentTarget("LCL", index)), nil
+	case internal.Arg:
+		return PopCommand(SegmentTarget("ARG", index)), nil
+	case internal.This:
+		return PopCommand(SegmentTarget("THIS", index)), nil
+	case internal.That:
+		return PopCommand(SegmentTarget("THAT", index)), nil
 	default:
-		segment, ok := segments[target.Variant]
-		if !ok {
-			return nil, fmt.Errorf("unexpected pop target %v", target.Literal)
-		}
-		return PopCommand(SegmentTarget(segment, index)), nil
+		return nil, fmt.Errorf("unexpected variant: %v", target.Variant)
 	}
 }
 
 func (vm *VM) parseInteger() (int, error) {
-	token, err := vm.expect(integer)
+	token, err := vm.expect(internal.Integer)
 	if err != nil {
 		return 0, err
 	}
 	return strconv.Atoi(token.Literal)
 }
 
-func (vm *VM) expect(v variant) (lexer.Token[variant], error) {
+func (vm *VM) expect(v internal.Variant) (internal.Token, error) {
 	token, err := vm.lx.Next()
 	if err != nil {
-		return lexer.Token[variant]{}, err
+		return internal.NullToken, err
 	}
 	if token.Variant != v {
-		return lexer.Token[variant]{}, fmt.Errorf("expected variant %v but found %v", v, token.Variant)
+		return internal.NullToken, fmt.Errorf("expected variant %v but found %v", v, token.Variant)
 	}
 	return token, nil
 }
