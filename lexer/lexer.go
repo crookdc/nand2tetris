@@ -6,20 +6,15 @@ import (
 	"unicode"
 )
 
-// EOF reports whether token represents the end of the source string or not.
-func EOF[T any](token Token[T]) bool {
-	return token.Literal == "EOF"
-}
-
-type Token[T any] struct {
+type Token[T comparable] struct {
 	Variant T
 	Literal string
 }
 
-type Func[T any] func(lexer *Lexer[T], c uint8) (Token[T], bool, error)
+type Func[T comparable] func(lexer *Lexer[T], c uint8) (Token[T], bool, error)
 
 // Params represents the parameters required to construct a Lexer
-type Params[T any] struct {
+type Params[T comparable] struct {
 	// Symbols maps bytes to token variants such as '#': Pound.
 	Symbols map[uint8]T
 	// Ignore is a ConditionFunc that resolves to true for any byte that should be ignored provided that it is the first
@@ -29,7 +24,7 @@ type Params[T any] struct {
 
 // NewLexer constructs a Lexer that adhere to the provided Params and uses the delegates to map anything that is not
 // already in the symbol table or being ignored.
-func NewLexer[T any](params Params[T], delegates ...Func[T]) *Lexer[T] {
+func NewLexer[T comparable](params Params[T], delegates ...Func[T]) *Lexer[T] {
 	return &Lexer[T]{
 		ignored:   params.Ignore,
 		symbols:   params.Symbols,
@@ -39,7 +34,7 @@ func NewLexer[T any](params Params[T], delegates ...Func[T]) *Lexer[T] {
 
 // Lexer is a data structure that facilitates customizable lexical analysis based of functions passed into its
 // constructor NewLexer.
-type Lexer[T any] struct {
+type Lexer[T comparable] struct {
 	ignored   ConditionFunc[T]
 	symbols   map[uint8]T
 	delegates []Func[T]
@@ -100,6 +95,17 @@ func (l *Lexer[T]) Next() (Token[T], error) {
 	return Token[T]{}, fmt.Errorf("all delegates failed to process character '%s'", string(character))
 }
 
+func (l *Lexer[T]) Expect(v T) (Token[T], error) {
+	token, err := l.Next()
+	if err != nil {
+		return Token[T]{}, err
+	}
+	if token.Variant != v {
+		return Token[T]{}, fmt.Errorf("unexpected token variant: %v", token.Variant)
+	}
+	return token, nil
+}
+
 func (l *Lexer[T]) literal(fn ConditionFunc[T]) string {
 	literal := ""
 	for ; l.cursor < len(l.source) && fn(l, l.source[l.cursor]); l.cursor++ {
@@ -119,21 +125,21 @@ func (l *Lexer[T]) Seek(c ConditionFunc[T]) error {
 }
 
 // Whitespace is a ConditionFunc that returns true when c is a whitespace character.
-func Whitespace[T any](lx *Lexer[T], c uint8) bool {
+func Whitespace[T comparable](lx *Lexer[T], c uint8) bool {
 	return unicode.IsSpace(rune(c))
 }
 
 // Alphabetical is a ConditionFunc that returns true when c is alphabetical.
-func Alphabetical[T any](lx *Lexer[T], c uint8) bool {
+func Alphabetical[T comparable](lx *Lexer[T], c uint8) bool {
 	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
 }
 
 // Numerical is a ConditionFunc that returns true when c is numerical.
-func Numerical[T any](lx *Lexer[T], c uint8) bool {
+func Numerical[T comparable](lx *Lexer[T], c uint8) bool {
 	return c >= '0' && c <= '9'
 }
 
 // Alphanumeric is a ConditionFunc that returns true when c is alphabetical or numerical.
-func Alphanumeric[T any](lx *Lexer[T], c uint8) bool {
+func Alphanumeric[T comparable](lx *Lexer[T], c uint8) bool {
 	return Alphabetical(lx, c) || Numerical(lx, c)
 }

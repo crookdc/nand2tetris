@@ -29,8 +29,8 @@ const (
 	Static
 	Pointer
 	Local
-	Arg
-	Tmp
+	Argument
+	Temp
 	This
 	That
 	Integer
@@ -73,8 +73,8 @@ func NewLexer(r io.Reader) (*lexer.Lexer[Variant], error) {
 				"constant": Constant,
 				"local":    Local,
 				"static":   Static,
-				"argument": Arg,
-				"temp":     Tmp,
+				"argument": Argument,
+				"temp":     Temp,
 				"this":     This,
 				"that":     That,
 				"pointer":  Pointer,
